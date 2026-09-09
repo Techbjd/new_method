@@ -30,6 +30,7 @@ GCN + GIN scoring → strict thresholds → consensus hits.
 - `gnn_paperstyle_hits.csv` — deep-learning screening mode (paper §3.5 logic:
   mean GCN/GIN prob > 0.6 + PAINS/Brenk/Ro5, for docking)
 - `gnn_hits_for_docking.sdf` — 3D structures of DL hits (needs local COCONUT SDF)
+- `ensemble_hits.csv` — ML + DL soft-vote hits (mean RF/GCN/GIN prob > 0.6) with overlap vs paper RF-116
 
 ## Paper-style deep-learning mode
 
