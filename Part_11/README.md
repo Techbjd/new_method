@@ -16,7 +16,9 @@ GCN + GIN scoring → strict thresholds → consensus hits.
 
 ## Inputs (full-pipeline layout, not duplicated here)
 
-- `Part_8/screening_results.csv` — 154,648 COCONUT compounds (too large to duplicate)
+- `Part_8/screening_results.csv` — 154,648 COCONUT compounds (too large to duplicate;
+  default input, cell 9). **Option B** (cell 10): screen directly from raw
+  `coconut_csv-03-2025.csv` with paper §2.5 sequential filtering instead.
 - `gcn_scratch_model.pth` — trained GCN weights, in `Part_9/`
 - `pretrained_gin_mdm2.pth` — trained GIN weights, in `Part_10/`
 
