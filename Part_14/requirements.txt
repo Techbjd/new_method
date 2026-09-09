@@ -1,0 +1,12 @@
+# Part 14 dependencies (ensemble screening, PyTorch Geometric — same stack as Parts 9-13)
+# Install: pip install -r requirements.txt
+torch
+torch-geometric
+rdkit
+scikit-learn
+pandas
+numpy
+matplotlib
+seaborn
+tqdm
+jupyter

@@ -1,0 +1,12 @@
+# Part 13 dependencies (Hybrid GCN+GAT, PyTorch Geometric — same stack as Parts 9-12)
+# Install: pip install -r requirements.txt
+torch
+torch-geometric
+rdkit
+scikit-learn
+pandas
+numpy
+matplotlib
+seaborn
+tqdm
+jupyter
