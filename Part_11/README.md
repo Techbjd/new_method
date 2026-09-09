@@ -25,6 +25,15 @@ GCN + GIN scoring → strict thresholds → consensus hits.
 - `gnn_screening_results.csv` — all screenable compounds with GCN/GIN scores
 - `gnn_consensus_hits.csv` — high-confidence consensus hits
 - `gnn_screening_analysis.png` — score distribution plots
+- `gnn_paperstyle_hits.csv` — deep-learning screening mode (paper §3.5 logic:
+  mean GCN/GIN prob > 0.6 + PAINS/Brenk/Ro5, for docking)
+- `gnn_hits_for_docking.sdf` — 3D structures of DL hits (needs local COCONUT SDF)
+
+## Paper-style deep-learning mode
+
+The last notebook section (§11) mirrors the paper pipeline: downloads
+`coconut_csv-03-2025.csv`, applies PAINS → Brenk → Lipinski filters, and screens
+with GCN + GIN at the paper's `prob > 0.6` cutoff instead of RF.
 
 ## How to run
 
