@@ -1,0 +1,12 @@
+# Part 10 dependencies (GIN fine-tuning, PyTorch Geometric)
+# Install: pip install -r requirements.txt
+torch
+torch-geometric
+rdkit
+scikit-learn
+pandas
+numpy
+matplotlib
+seaborn
+tqdm
+jupyter
