@@ -1,0 +1,12 @@
+# Part 12 dependencies (AttentiveFP, PyTorch Geometric — same stack as Parts 9-11)
+# Install: pip install -r requirements.txt
+torch
+torch-geometric
+rdkit
+scikit-learn
+pandas
+numpy
+matplotlib
+seaborn
+tqdm
+jupyter
