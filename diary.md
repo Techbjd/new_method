@@ -448,3 +448,22 @@ expected cell counts 60/45/44/44/50/54/48 all match, py_compile clean, diffs add
 Still to run (Colab T4, ~45–90 min/notebook): the new grid + repeated-CV cells in each notebook;
 rescue `coconut_part15_hits*.csv` / `docking_tiers` outputs into the repo; docking remains the
 critical path before paper claims.
+
+## 2026-09-25 — Single-model ranking (RANK_MODE) + PC-linked vs Colab path split
+
+Research call: ensemble (all 3) stays the primary ranker — it gives `std_pred_pic50` /
+`high_variance` AD annotation, dilutes GINE's weak fold, and produced the 3x RF enrichment;
+single model is a sensitivity check (appendix). No retraining needed for either (screening-only).
+
+Fast notebook (60→61 cells, default `RANK_MODE='ensemble'` so all numbers unchanged):
+`RANK_MODE = ensemble|dmpnn|gine|chemberta` + `rank_col` drives `coconut15-ensemble` sweep (now
+prints ensemble sweep AND per-model sweep table at 6.0…8.5), `coconut15-save` threshold/rank,
+`coconut15-plot` labels, `coconut15-export-rf` hit selection; std/`high_variance` always from all
+3 models. New `coconut15-agreement` cell: Spearman ensemble-vs-each-model + top-155 overlap →
+`coconut_part15_model_agreement.csv`. Recommended lone screener if ever needed: ChemBERTa
+(most stable CV 0.720±0.022); avoid GINE alone (0.643±0.030).
+
+All 7 training notebooks: `IN_COLAB = os.path.isdir('/content')` path split — PC resolves only
+local linked candidates (`SOURCE=PC-linked …`, clear FileNotFoundError naming expected paths,
+no downloads); Colab keeps clone/gdown fallbacks (`SOURCE=Colab …`). RF pkl chains split the
+same way (`RF_SOURCE=…`). Verified: counts 61/45/44/44/50/54/48, py_compile clean, outputs kept.
