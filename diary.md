@@ -317,3 +317,134 @@ pip install rdkit-pypi chembl-webresource-client pandas numpy scikit-learn matpl
 | 2026-09-07 | Added Part 9: GCN from scratch (PyTorch Geometric, 3-layer GCN) |
 | 2026-09-07 | Added Part 10: GIN fine-tuning (MolCLR architecture, 5-layer GIN) |
 | 2026-09-07 | Both notebooks verified on Colab — zero errors, actual results recorded |
+| 2026-09-10 | Part 12 partial PC run (main 100 epochs + test eval only, CPU) — metrics below; Y-rand/CV moved to Colab |
+| 2026-09-10 | Part 14: appended paper-COCONUT download cell (idx 14) — only addition, no existing cell touched |
+
+---
+
+## 2026-09-10 — Parts 12/13/14: PC run stopped, Colab runbook
+
+PC (8-core CPU) was saturating (load ~7.4) on the AttentiveFP full protocol
+(100 main + 10x100 Y-randomization + 5x100 CV epochs), so local execution was
+stopped. Full training + screening moves to Colab GPU. No existing notebook
+cell was modified for this — only one cell was appended to Part 14.
+
+### Part 12 partial result (real, from unmodified Part_12_AttentiveFP_Local code)
+
+- Ran as-is (script form, repo root as cwd, CPU torch 2.13, pyg 2.8.0) until stopped.
+- Completed: 100-epoch main training + test-set evaluation (80/20 stratified, seed 57).
+- NOT completed: 10x Y-randomization, 5-fold CV, final weight save (killed first).
+- Test metrics (`Part_12/performance_attentivefp_test.csv`):
+
+| Model | Accuracy | Precision | F1 | Sensitivity | ROC-AUC | MCC |
+|-------|----------|-----------|----|-------------|---------|-----|
+| AttentiveFP | 0.853 | 0.821 | 0.871 | 0.928 | 0.928 | 0.708 |
+
+- Plots saved alongside: `training_curves_attentivefp.png`, `roc_curve_attentivefp.png`,
+  `confusion_matrix_attentivefp.png`.
+- Context: RF 0.960 / GCN 0.952 / GIN 0.947 ROC-AUC (diary 2026-09-07). AttentiveFP
+  0.928 trails them on this split — re-check after full Colab run (100 epochs,
+  Y-rand, 5-fold CV) before concluding.
+- Local helper copies removed after the stop (`Part_2/`, `Part_6/`, `Part_8/` at repo
+  root were duplicates of `Natural_MDM2_.../Part_*` used only for the PC run).
+
+### Part 14 change (append-only)
+
+- Added one code cell (idx 14, right after the OPTION B raw-COCONUT cell, before
+  `## 4. Featurize`): downloads `coconut_csv-03-2025.csv` via gdown
+  (`FILE_ID = 1-DFc6lMf6maNAWPwZFA8uY6951SokoNY`, same public Drive file as
+  Parts 7/11), skips if already present. Default screen still uses the Part 8
+  COCONUT table (154647 compounds); OPTION B raw screen stays opt-in.
+- Notebook validates (nbformat, 30 cells). All model/screening/consensus/medchem/SDF
+  cells untouched.
+
+### Colab completions found locally (2026-09-10, user runs, 0 errors, no re-run needed)
+
+- `Part_12_AttentiveFP_Colab.ipynb` (32 cells, exec 1–21, Device: cuda): full protocol
+  done — 100 epochs (final Test AUC 0.924), 10x Y-randomization (AUC 0.18–0.70, no
+  signal on shuffled labels — good), 5-fold CV AUC 0.948/0.858/0.928/0.964/0.887,
+  weight saved (`attentivefp_mdm2.pth`, 350,661 params).
+- `Part_13_HybridGCNGAT_Colab.ipynb` (32 cells, exec 1–20, Device: cuda): full protocol
+  done — 100 epochs (final Test AUC 0.956), 10x Y-randomization (AUC 0.28–0.67),
+  5-fold CV AUC 0.956/0.898/0.941/0.959/0.940, weight saved
+  (`hybrid_gcn_gat_mdm2.pth`, 60,482 params).
+- Test-set comparison (all recorded, same 80/20 split family, seed 57):
+
+| Model | Accuracy | Precision | F1 | Sensitivity | ROC-AUC | MCC |
+|-------|----------|-----------|----|-------------|---------|-----|
+| RF (Morgan, Part 6) | 0.938 | 0.930 | 0.943 | 0.957 | 0.960 | 0.876 |
+| GCN scratch (Part 9) | 0.915 | 0.892 | 0.923 | 0.957 | 0.952 | 0.830 |
+| GIN (Part 10) | 0.899 | 0.850 | 0.913 | 0.986 | 0.947 | 0.807 |
+| AttentiveFP (Part 12, Colab GPU) | 0.829 | 0.776 | 0.857 | 0.957 | 0.924 | 0.673 |
+| Hybrid GCN+GAT (Part 13, Colab GPU) | 0.891 | 0.857 | 0.904 | 0.957 | 0.956 | 0.786 |
+| AttentiveFP (Part 12, PC CPU partial) | 0.853 | 0.821 | 0.871 | 0.928 | 0.928 | 0.708 |
+
+- Hybrid GCN+GAT is the best GNN (0.956, ~RF level). AttentiveFP trails (0.924 GPU /
+  0.928 CPU partial) — same ranking on both machines, so it is architecture/data,
+  not a training accident.
+- Still to fetch from Colab into the repo: `Part_12/attentivefp_mdm2.pth` +
+  `performance_attentivefp_{test,shuffled,cv}.csv`, `Part_13/hybrid_gcn_gat_mdm2.pth` +
+  `performance_hybrid_{test,shuffled,cv}.csv`. Then run Part 14 (all 5 voters).
+
+## 2026-09-10 — Part 15 created (small-data deep learning, GitHub-standard)
+
+New folder `Part_15/` mirrors the Part 12/13 structure (README + requirements +
+Local/Colab notebooks + `ro5_properties_filtered.csv` copy, MD5 `eae88fc7...`):
+
+- `Part_15_SmallData_DL_Local.ipynb` (41 cells, 25 code) + `Part_15_SmallData_DL_Colab.ipynb`
+  (42 cells: clone + `pip install torch-geometric rdkit transformers` prefix, rest identical core).
+  Both validate (nbformat) and all code cells compile (Colab `!`/`%` cells excluded, same as Part 12).
+- Three paper-backed, small-data-safe models (<50k trainable params each), same protocol as
+  Parts 9/10/12/13 (80/20 split seed 57, 100 epochs Adam 1e-3, batch 64, 10x Y-rand, 5-fold CV):
+  1. **D-MPNN-small** (~23k params) after Yang et al. 2019, `chemprop/chemprop` — directed
+     edge messages with reverse-edge exclusion + skip, hidden=64, depth=2.
+  2. **GINE-small** (~40k params) after Hu et al. 2020, `snap-stanford/pretrain-gnns` —
+     hand-rolled GINE layers (atom project + bond-MLP messages + eps update), 3x hidden=64.
+  3. **Frozen ChemBERTa + MLP** (~49k trainable) after Chithrananda et al. 2020 —
+     `seyonec/ChemBERTa-zinc-base-v1` frozen mean-pooled embeddings (cached to
+     `chemberta_embeddings.pt`), only the 768->64->2 head trains; gracefully skipped if the
+     hub download/`transformers` is unavailable.
+- Small-data tactics: small hidden dims, dropout 0.2–0.3, **train-only SMILES-enumeration
+  augmentation (x4)** via `MolToSmiles(doRandom=True)`; Y-rand/CV stay non-augmented (canonical)
+  so honesty checks remain comparable. Outputs: `performance_part15_{test,shuffled,cv}.csv`,
+  `comparison_part15_vs_all.csv`, `training_curves_{dmpnn,gine,chemberta}.png`,
+  `roc_curve_part15.png`, `confusion_matrix_part15.png`, weights `dmpnn_mdm2.pth` /
+  `gine_mdm2.pth` / `chemberta_mlp_mdm2.pth` (saved by YOUR run, never committed untrained).
+
+### Part 14 change (append-only, cells 0–30 proven byte-identical in-script)
+
+- Appended 3 cells (now 34 cells, nbformat-valid, new code compiles): md `## 10. Part 15 voters`
+  + loader/inference cell (verbatim Part 15 class defs — verified identical to the Part 15
+  notebook — WANT15 download `Part_15/*.pth` with skip-if-missing, D-MPNN/GINE scored on the
+  same `screen_loader` with edge_attr forward, ChemBERTa voter guarded on `transformers` +
+  hub download, chunked so no 475 MB embedding matrix is stored) + 8-voter recompute cell
+  (same consensus/soft-vote rules as idx22, saves `ensemble_screening_results_8model.csv` /
+  `ensemble_consensus_hits_8model.csv`, original 5-voter files kept).
+- To run on Colab: train Part 15 (T4, Run all) → download the 3 `.pth` into `Part_15/` →
+  Run-all Part 14 (5 voters, then the 3 appended cells for 8 voters).
+
+## 2026-09-25 — Full-flow port to all DL notebooks + rigor closers (Arjun parity)
+
+All 7 training notebooks now run the fast-notebook flow (append-only edits, old outputs kept,
+JSON-valid, new code compiles): TASK flag (regression|classification|both) with Delta-ML
+(Ridge alpha=1.0 + StandardScaler, train-only fit, regression) and derived 0/1 @ pIC50>=7.0 +
+ROC-AUC for the regression path; graph-first fingerprints (USE_MACCS/USE_MORGAN=False default);
+WEIGHT_DECAY=1e-4; early stopping (PATIENCE=15 on val R2/AUC); AUGMENT_N=2; FILTER_DUP_SMILES=True;
+PRED_CAP=10.0 clip; STRICT_MEDCHEM/AD wiring; ALREADY_FILTERED COCONUT warning; RF-consensus
+merge; Part_11 gained docking tiers (`docking_tiers.csv` + T1/T2/T3 SMILES). Final cell counts:
+`testing/fix_of_chemphore/colabtestregressiom_fast.ipynb` 60, Part_9_GNN_DeepChem 44,
+Part_9_GCN_HFooladi 54, Part_10_Pretrained_GNN 50 (head-only wd, encoder lr 1e-5 untouched),
+Part_10_GIN_HFooladi 48, Part_12_AttentiveFP 45, Part_13_HybridGCNGAT 44, Part_11_Screening 44.
+
+Rigor closers (closes the last 2 Arjun gaps: GridSearchCV, RepeatedStratifiedKFold-125): each of
+the 7 training notebooks gained 3 appended cells — mini hyperparameter grid
+(lr{1e-3,3e-4} x wd{1e-4,1e-3} x dropout = 8 configs; 4 configs where the constructor lacks a
+dropout arg, i.e. Part_10-Pretrained head-only grid and Part_9-HFooladi BasicGCN; early-stopped,
+ranked table, BEST_CFG + CPU state_dict) + repeated CV (3 repeats x 5 folds = 15 evals, per-fold
+Ridge+scaler refit on train-fold only, seeds RANDOM_SEED/SEED+100*r+fold, BEST_CFG-aware with
+flag-default fallback, per-repeat and grand mean±std vs original single-5-fold). Verified:
+expected cell counts 60/45/44/44/50/54/48 all match, py_compile clean, diffs additive-only.
+
+Still to run (Colab T4, ~45–90 min/notebook): the new grid + repeated-CV cells in each notebook;
+rescue `coconut_part15_hits*.csv` / `docking_tiers` outputs into the repo; docking remains the
+critical path before paper claims.

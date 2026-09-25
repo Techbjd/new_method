@@ -1,0 +1,13 @@
+# Part 15 dependencies (D-MPNN + GINE + ChemBERTa-MLP, PyTorch Geometric — same stack as Parts 9-13, plus transformers)
+# Install: pip install -r requirements.txt
+torch
+torch-geometric
+rdkit
+scikit-learn
+pandas
+numpy
+matplotlib
+seaborn
+tqdm
+jupyter
+transformers

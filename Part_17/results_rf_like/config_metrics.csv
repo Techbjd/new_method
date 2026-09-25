@@ -1,0 +1,5 @@
+cfg,random_auc,scaffold_auc
+hybrid_mask_aug_distill,0.9678,1.0
+hybrid_mask_aug_focal,0.9752,1.0
+hybrid_no_mask_aug_distill,0.968,1.0
+gat_mask_aug_distill,,
