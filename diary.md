@@ -467,3 +467,71 @@ All 7 training notebooks: `IN_COLAB = os.path.isdir('/content')` path split — 
 local linked candidates (`SOURCE=PC-linked …`, clear FileNotFoundError naming expected paths,
 no downloads); Colab keeps clone/gdown fallbacks (`SOURCE=Colab …`). RF pkl chains split the
 same way (`RF_SOURCE=…`). Verified: counts 61/45/44/44/50/54/48, py_compile clean, outputs kept.
+
+## 2026-09-25 — Four locked decisions patched into fast notebook (structure-only, no run)
+
+In-place upgrade to `testing/fix_of_chemphore/colabtestregressiom_fast.ipynb` (still 61 cells,
+JSON-valid, all code cells `ast.parse` clean, outputs kept, notebook NOT executed):
+
+1. GIN 64-dim/3-layer ~33k LOCKED (not 128/60k): `GIN_HIDDEN/LAYERS/DROPOUT=64/3/0.4`,
+docstring + `assert params<50k` guard in `cb01e8a0`; fresh-model dropouts aligned to flags
+(0.3/0.4/0.4). Why: <50k envelope for 516 train; Xu/Hu 300x5/465k is pretrain-scale, overfits.
+2. Baseline Ridge-6desc kept (alpha=1.0, train-only): `USE_STRONG_BASELINE=False`; Delta-R2
+= R2_delta − R2_ridge (~+0.29) is the DL-value metric. XGB-200d rejected (overfits 516, hides gain).
+3. Split scaffold PRIMARY, random appendix: `SPLIT_MODE='scaffold'` → Murcko GroupShuffleSplit
+80/20 seed 57 with qcut-random fallback; header cell documents random as optimistic appendix.
+4. AD-tiered T1/T2/T3: `APPLICABILITY_DOMAIN_FILTER=True`, `AD_TANIMOTO_CUT=0.35`,
+`TIER_MODE=True`; ensemble cell writes `docking_tier` (T1=GNN≥7.5&RF>0.6&in-AD dock first;
+T2=GNN-only novel appendix; OOD never T1). Fixes 0/1600 RF-agree without losing novelty.
+Y-rand honesty fix (`d9530b79`): shuffle RAW pIC50 then refit Ridge+scaler per shuffle
+(graph + ChemBERTa branches); old code shuffled scaled delta after fit → fake R2 0.29–0.49.
+Single-run contract: `RUN_ENV`/`SOURCE`, deterministic cudnn, seed 57 — same Run-All on
+Colab-T4 and PC-GPU/CPU.
+
+## 2026-09-25 — Colab run sheet (fresh run, T4 GPU)
+
+Upload/run: open Colab → T4 GPU → upload `colabtestregressiom_fast.ipynb` → Runtime → Run all
+(~45–90 min: trains D-MPNN/GINE/ChemBERTa-MLP 100ep early-stop + 10x Y-rand + 5-fold CV +
+154647 COCONUT screen + RF-consensus on ≥7.5 hits). No flags to change (`SPLIT_MODE=scaffold`,
+`AD_FILTER=True`, `RANK_MODE=ensemble` are the claim defaults).
+Expect (scaffold lowers vs old random-appendix 0.746/0.646/0.714): D-MPNN R2~0.60–0.70,
+ChemBERTa most stable, GINE lowest; Y-rand R2~0/neg (honest now); screen sweep
+≥7.5 ~1–2k → tiers T1 (small, dock first) / T2 (novelty appendix); RF>0.6 on T1 only.
+Rescue back to repo: `performance_part15_{test,shuffled,cv}.csv`,
+`performance_comparison_part15.csv`, `coconut_part15_screening_full.csv`,
+`coconut_part15_hits{,_top01pct}.csv`, `coconut_part15_hits_pIC50_7.5{,_rf_screened}.csv`,
+`coconut_part15_model_agreement.csv`, `dmpnn/gine/chemberta_mdm2.pth`,
+`training_curves/parity/residuals/screening.png`. Docking (4HG7) stays critical path after.
+
+## 2026-09-26 — Pipeline fixes + regression-AUC applied to fast notebook (code-only, not executed)
+
+Why: the 2026-09-25 Colab run (`Untitled1.ipynb`, T4) exposed two `KeyError` crashes
+(`medchem_pass` skipped-cell ordering; `pred_chemberta` from the emptied ChemBERTa cell)
+plus three silent degradations found in the 10-researcher review (dropped `prob_class_1`
+kills T1/T2/T3 tiering; duplicate featurize wastes ~7 min; per-row RF loop). Also adds the
+requested regression-AUC so GNN regressors can be compared on the RF's home turf.
+All edits in `testing/fix_of_chemphore/colabtestregressiom_fast.ipynb` (61→60 cells):
+
+A. medchem asserts (rank/save cells): explicit "run PAINS/Brenk/Ro5 cell first" instead of
+   raw pandas `KeyError` — reason: crash came from skipped/out-of-order cell, message must say so.
+B. Tolerant `gnn_cols`/`show_cols` (export-rf cell): filter to present columns + warn —
+   reason: `HAVE_CB=False` runs must stay green without `pred_chemberta` (validated live on Colab).
+C. ChemBERTa screening cell restored (was emptied 2026-09-25) — reason: without it the
+   "ensemble" is silently 2-model while tables imply 3; one forward pass, embeddings cached.
+D. Deleted duplicate featurize cell (byte-identical 49/50) — reason: ~7 min wasted per run.
+E. Loader keeps `prediction/prob_class_0/prob_class_1` when present — reason: old code dropped
+   them, so DECISION-4 tiering degraded to T1-ready/T2-OOD and true T1 (GNN+RF) was unreachable.
+F. Vectorized RF `predict/predict_proba` (verbatim loop kept as comment) — reason: ~100x faster,
+   numerically identical, Arjun parity preserved in comment.
+G. `WEIGHT_DECAY` 1e-4→1e-3 — reason: rigor-grid best cfg (val R2 0.748 vs 0.737); numbers refresh on retrain.
+H. Regression-AUC block (eval cell): per-model ROC-AUC + PR-AUC binarizing TRUE pIC50 at
+   6.0/6.5/7.0, scored by PREDICTED pIC50 → `performance_part15_test_auc.csv` — reason: requested
+   "AUC with regression"; single-class test slices guarded to NaN with a printed skip note.
+
+Validation: `nbformat.validate` clean; `ast.parse` clean on all edited cells (only pre-existing
+failures are cells 0–1 IPython magics `!git clone/%cd/!pip`, untouched); 11/11 structural checks
+pass (WD, imports, AUC block+csv, RF-cols, 2 asserts, tolerant cols, vectorized loop, chemberta
+producer, single featurize, single-class guard). Stored outputs KEPT (now stale for edited cells —
+marked here, refresh via Colab Run-all). Out of scope (deferred): val-split early stopping,
+scaffold-singleton fix, repeated-CV for all models, assay-type audit.
+Rescue add: `performance_part15_test_auc.csv` joins the file list above.
