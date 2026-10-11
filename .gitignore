@@ -1,1 +1,3 @@
 Part_17/data/featurized_coconut.npz
+*.pyc
+__pycache__/

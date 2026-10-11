@@ -1,18 +1,28 @@
-"""Build Option C pretrain pool: MDM2-like, 0.4<maxT<0.85 vs 645 train."""
-import os, sys, urllib.request, pandas as pd, numpy as np
+"""Build Option C pretrain pool: MDM2-like, 0.4<maxT<0.85 vs 645 train.
+Usage (repo root): python3 Part_17/scripts/build_pretrain_pool.py
+Works locally and on Colab (auto-detects repo root, downloads ZINC250k if needed).
+"""
+import os, sys, tempfile, urllib.request, pandas as pd, numpy as np
+from pathlib import Path
 from tqdm import tqdm
 from rdkit import Chem
 from rdkit.Chem import AllChem, DataStructs
 
+REPO = Path(__file__).resolve().parents[2]  # Part_17/scripts/ -> repo root
 SEED = 57
 rng = np.random.RandomState(SEED)
-OUT = "Part_17/data/pretrain_mdm2like_20k.csv"
-ZINC_CACHE = "/tmp/zinc250k.csv"
+OUT = str(REPO / "Part_17" / "data" / "pretrain_mdm2like_20k.csv")
+ZINC_CACHE = os.path.join(tempfile.gettempdir(), "zinc250k.csv")
 ZINC_URLS = [
     "https://raw.githubusercontent.com/aspuru-guzik-group/chemical_vae/master/models/zinc_properties/250k_rndm_zinc_drugs_clean_3.csv",
 ]
-TRAIN_CSV = "ro5_properties_filtered.csv"
-CHEMBL_CSV = "Natural_MDM2_Inhibitor_Discovery_using_ML/Part_12/mdm2_chembl_clean.csv"
+TRAIN_CSV = str(REPO / "ro5_properties_filtered.csv")
+_CANDIDATES = [
+    REPO / "Part_17" / "data" / "mdm2_chembl_smiles.csv",  # tracked, Colab-safe
+    REPO / "Natural_MDM2_Inhibitor_Discovery_using_ML" / "Part_12" / "mdm2_chembl_clean.csv",
+]
+CHEMBL_CSV = str(next((p for p in _CANDIDATES if p.exists()), _CANDIDATES[0]))
+print(f"CHEMBL source: {CHEMBL_CSV}", flush=True)
 
 def canon(s):
     try:
