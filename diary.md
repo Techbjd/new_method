@@ -535,3 +535,24 @@ producer, single featurize, single-class guard). Stored outputs KEPT (now stale 
 marked here, refresh via Colab Run-all). Out of scope (deferred): val-split early stopping,
 scaffold-singleton fix, repeated-CV for all models, assay-type audit.
 Rescue add: `performance_part15_test_auc.csv` joins the file list above.
+
+## 2026-10-13 — MACCS late-fusion ON + softmax-saturation guard (fast notebook, code-only, not executed)
+
+File: `testing/fix_of_chemphore/colabtestregressiom_fast.ipynb` (61→63 cells, JSON-valid, outputs kept stale).
+
+What changed and why:
+
+1. `USE_MACCS = False → True` (cell 6). MACCS 167 bits are projected `167→32` and concatenated with the pooled GNN output `g[64-d] → 96-d` head. Not fed into message-passing, so no remodel of the 78+6 graph convs and no topology domination. `USE_MORGAN` stays OFF (1024 bits = +33k params, too big for n=645). Effect: stable substructure keys help COCONUT screening generalization alongside learned topology.
+2. Fusion upgrade `DirectedMPNN` + `GINESmall` (cells 9–10): `Linear→ReLU→Dropout(0.1)` proj, `LayerNorm + Dropout` after `cat`, instance `maccs_proj_dim` (removes global `MACCS_PROJ_DIM` fallback bug). Params: D-MPNN 22,977→30,593, GINE ~40,068 — still small-data-safe. Heads stay linear `out_dim=1`.
+3. Fingerprint-carry fix (cells 39/41/59): Y-rand, 5-fold CV, and 3×5 repeated-CV helpers carried only `maccs`; now carry both `maccs` + `morgan` when present. Reason: CV folds silently dropped Morgan fusion before.
+4. Softmax-bias solution (new cells 61–62, `## 17`): old classification collapsed (`avg_prob>0.5 → 62k hits, top10=1.0`, all probs near 0.5–1.0). Fix enforced = regression-only `TASK=regression` linear heads (no `softmax/sigmoid/CrossEntropy`), Delta-ML (`delta = pIC50 − Ridge baseline` + `StandardScaler`), `PRED_CAP=10.0` clip, ranking by continuous `avg_pred_pic50 + std_pred_pic50` top-0.1% instead of `p>0.5`. New check cell asserts no softmax string in any `forward` and reports spread/clip/variance (`std>0.15`, `>100` unique preds), failing loudly if saturation returns.
+
+Error solved: classification saturation bias (near-identical softmax outputs) + missing MACCS signal at screen time.
+
+Validation: `ast.parse` clean on all edited cells (only pre-existing `!/%` magics in cells 0–2 fail, untouched); dummy-batch forward pass CPU-verified for both models with/without MACCS (`[B]` continuous outputs, missing-MACCS zero fallback works); backup at `/tmp/opencode/backup_colabtestregressiom_fast.ipynb`. Not executed — refresh via Colab T4 Run-all, then rescue `performance_part15_*.csv`, `coconut_part15_*.csv`, `*.pth`, `*.png` as before.
+
+Solution — what we do (applies the fix end-to-end):
+
+1. Train graph-first with MACCS assist: RDKit graph (78+6) → D-MPNN/GINE → pool `g` → `cat(g, MACCS-32)` → `LayerNorm/Dropout` → linear pIC50/delta. ChemBERTa branch stays frozen-embedding + MLP. Delta-ML on (`USE_DELTA=True`, Ridge-6desc + scaler, train-only fit).
+2. Prove no bias: train 100ep early-stop on val R2 → test R2/RMSE/MAE + parity/residual plots → 10× Y-rand (expect R2~0/neg) → 5-fold + 3×5 repeated CV → regression-AUC at pIC50 6.0/6.5/7.0 → run Cell 17 check (no-softmax assert + spread/clip/variance report).
+3. Screen COCONUT: featurize once (graph + MACCS together) → predict scaled delta → inverse + baseline → clip 10.0 → `avg_pred_pic50 + std_pred_pic50` → sweep 6.0–8.5 → top-0.1% + medchem + AD-variance tiers (T1 dock-first, T2 novelty) → RF-consensus on ≥7.5 hits → rescue hits/CSVs/weights for docking (4HG7).
