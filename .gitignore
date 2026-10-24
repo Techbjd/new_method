@@ -1,3 +1,8 @@
 Part_17/data/featurized_coconut.npz
 *.pyc
 __pycache__/
+
+# Part_20 generated artifacts (large / reproducible)
+Part_20_Fixed/cache/
+Part_20_Fixed/data/
+Part_20_Fixed/screening_full_regression.csv
