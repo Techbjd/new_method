@@ -7,10 +7,10 @@
 # 4. **GitHub-first data** — training CSV, filtered screening library and graph featurizer (`common.py`) are fetched from `raw.githubusercontent.com/Techbjd/new_method/main`; a HEAD-availability table is printed first. `cuts.json` is optional (sane defaults if not on GitHub).
 # 5. **Train ↔ screen similarity handled explicitly** — the *same* Morgan r3/512 fingerprint is used for training and screening; every library compound gets exact Tanimoto to the **464 training compounds** (the `in_AD` reference), plus **all 645 labelled** compounds and **343 actives**, nearest-neighbour IDs, and a domain-shift table (train leave-one-out within 464 vs test↔train-464 vs screen↔train-464).
 # 6. **Honest accuracy** — scaffold split 464 / 52 / 129; early stopping only on validation; **test evaluated once**; no test-based model selection. Pretrained Part_18 classifiers are **not** reused: their temperature was calibrated on the 129 test set, so warm-starting from them would leak the test labels.
+# 7. **Full DL input/output audit (last cell)** — prints every input (split sizes, pIC50 ranges, graph shapes, sample atom features/edges, scaler, model config, devices), every epoch of training history, the **complete 645-row prediction table** (train + val + test, with in-sample vs held-out clearly marked) with residuals, worst errors, bias/calibration per split, and a screening re-prediction spot-check that proves SMILES → graph → prediction → CSV alignment. Saves `dl_full_predictions.csv` (all 645), `dl_training_history.csv`, `dl_audit.json` with PASS/FAIL checks.
 # 
 # **Run:** Kaggle GPU T4 ×2, Internet ON → *Run All*. Safe to re-run.
-# **Outputs:** `screening_full_regression.csv`, `hits_T1.csv`, `hits_T2.csv`, `hits_T3.csv`, `screening_regression_QC.png`, `run_manifest.json`.
-# 
+# **Outputs:** `screening_full_regression.csv`, `hits_T1.csv`, `hits_T2.csv`, `hits_T3.csv`, `screening_regression_QC.png`, `run_manifest.json`, `dl_full_predictions.csv`, `dl_training_history.csv`, `dl_audit.json`.
 
 # ===== CELL 1 =====
 # 0 — Setup: verify/install ALL packages (safe to re-run)
@@ -56,7 +56,6 @@ print('sklearn', sklearn.__version__, '| rdkit', rdkit.__version__, '| torch', t
 print('cuda available', torch.cuda.is_available(), '| n_gpu', torch.cuda.device_count(), '| cpu_count', os.cpu_count())
 for i in range(torch.cuda.device_count()):
     print('  GPU', i, torch.cuda.get_device_name(i))
-
 
 # ===== CELL 2 =====
 # 1 — Config (single source of truth) + resume flags
@@ -113,7 +112,6 @@ for _p in ['cuts.json', '../cuts.json', os.path.join(DATA_DIR, 'cuts.json'), '/k
 print('CONFIG | seed', RANDOM_SEED, '| morgan r%d/%d' % (MORGAN_RADIUS, MORGAN_NBITS),
       '| AD_CUT', AD_CUT, '| T1_CUT', T1_CUT, '| resume', RESUME, '| dual_gpu', USE_DUAL_GPU)
 
-
 # ===== CELL 3 =====
 # 2 — GitHub-first data acquisition (idempotent; skips finished downloads)
 import os, time, urllib.request
@@ -162,7 +160,6 @@ else:
     print('[local] train =', TRAIN_PATH)
 print('TRAIN_PATH =', TRAIN_PATH)
 
-
 # ===== CELL 4 =====
 # 3 — Load 645 training compounds (pIC50 regression target)
 import pandas as pd
@@ -185,7 +182,6 @@ else:
 print('pIC50 range %.2f..%.2f | mean %.2f' % (df['pIC50'].min(), df['pIC50'].max(), df['pIC50'].mean()))
 print('labels: %d active / %d inactive' % (int(df['label'].sum()), int((df['label'] == 0).sum())))
 df.head(3)
-
 
 # ===== CELL 5 =====
 # 4 — ONE Morgan featurizer (r3/512) + parallel training fingerprints
@@ -230,7 +226,6 @@ if 'molecule_chembl_id' in df.columns:
 else:
     train_ids = np.array(['TRAIN_%d' % i for i in keep])
 print('kept', X.shape, '| dropped invalid', len(fps) - len(keep), '| actives', int(y.sum()))
-
 
 # ===== CELL 6 =====
 # 5 — Scaffold split -> 464/52/129 (cumulative 20% of molecules; TEST touched once)
@@ -283,7 +278,6 @@ print('[split] train %d / val %d / test %d | canonical overlap train-test = %d (
       % (len(tr), len(va), len(te), len(canon_tr & canon_te)))
 print('scaffold groups shared train/test:', len({scaffolds[i] for i in tr} & {scaffolds[i] for i in te}))
 
-
 # ===== CELL 7 =====
 # 6 — Delta-ML baseline: Ridge(6 RDKit descriptors) fitted on TRAIN only
 import numpy as np
@@ -332,7 +326,6 @@ print('baseline Ridge (pIC50): train R2=%.3f | val R2=%.3f RMSE=%.3f | test R2=%
 print('delta scaler fitted on train only | delta mean %.3f std %.3f'
       % (float(delta_all[tr].mean()), float(delta_all[tr].std())))
 
-
 # ===== CELL 8 =====
 # 7 — Graph featurizer: GitHub common.py (78-dim), cached + verified
 import os, sys, importlib.util, shutil
@@ -367,7 +360,6 @@ sys.modules['part18_common'] = _mod
 _g = mol_to_graph('CC(=O)Oc1ccccc1C(=O)O', 0.0)
 assert _g is not None and _g.x.shape[1] == 78, 'unexpected graph feature dim: %s' % (None if _g is None else _g.x.shape)
 print('graph featurizer OK | node dim', _g.x.shape[1], '| edges', _g.edge_index.shape[1])
-
 
 # ===== CELL 9 =====
 # 8 — Build train/val/test graphs (y = scaled delta); cached
@@ -424,7 +416,6 @@ val_base = base_all[val_pos]
 test_base = base_all[test_pos]
 print('aligned labels: val', y_val_raw.shape, '| test', y_test_raw.shape)
 
-
 # ===== CELL 10 =====
 # 9 — Regression GNNs (GCN / GIN, 78-dim graphs, delta output)
 import torch
@@ -466,7 +457,6 @@ def count_params(m):
 
 print('GNNReg ready | GCN params', count_params(GNNReg(kind='gcn')),
       '| GIN params', count_params(GNNReg(kind='gin')))
-
 
 # ===== CELL 11 =====
 # 10 — Dual-GPU training: GCN-reg on cuda:0 + GIN-reg on cuda:1 (val early-stop; TEST once)
@@ -529,8 +519,7 @@ def train_one(kind, device, seed):
             wait += 1
             if wait >= GNN_PATIENCE:
                 break
-        if ep == 1 or ep % 10 == 0:
-            print('  [%s@%s] ep %03d loss %.4f val_R2 %.4f' % (kind, device, ep, tot / max(nseen, 1), r2))
+        print('  [%s@%s] ep %03d loss %.4f val_R2 %.4f' % (kind, device, ep, tot / max(nseen, 1), r2))
     model.load_state_dict(best_state)
     model.to(device).eval()
     pv, tv = evaluate_reg(model, val_loader, device)
@@ -588,7 +577,6 @@ for name, key in [('Ridge baseline', 'baseline'), ('GCN-reg (GNN)', 'gcn'), ('GI
     v, t = METRICS[key]['val'], METRICS[key]['test']
     print('%-16s %8.3f %9.3f %8.3f %10.3f %9.3f' % (name, v['r2'], v['rmse'], t['r2'], t['rmse'], t['mae']))
 print('test evaluated ONCE (after early stopping on val) — no test-based tuning')
-
 
 # ===== CELL 12 =====
 # 11 — Load screening library: GitHub-first filtered COCONUT (idempotent)
@@ -649,7 +637,6 @@ if len(lib) > 300000:
     print('[warn] raw COCONUT (mostly far out-of-domain). Prefer the GitHub filtered screening_results.csv for paper parity.')
 lib.head(3)
 
-
 # ===== CELL 13 =====
 # 12 — Library Morgan fingerprints (AD axis), parallel + cached
 import os, time, numpy as np
@@ -678,7 +665,6 @@ else:
     print('LIB_FP', LIB_FP.shape, '| cached for AD')
 
 print('library rows:', n_lib, '| fingerprint matrix:', LIB_FP.shape)
-
 
 # ===== CELL 14 =====
 # 13 — Dual-GPU screening in memory-safe chunks (GCN on cuda:0, GIN on cuda:1)
@@ -758,7 +744,6 @@ else:
     print('[screen] %d/%d valid graphs scored in %.0fs' % (len(screen_idx), n_lib, time.time() - t0))
 
 print('screen preds:', pred_gcn_scaled.shape, pred_gin_scaled.shape, '| valid idx', len(screen_idx))
-
 
 # ===== CELL 15 =====
 # 14 — Exact train<->screen similarity: 464 train + 645 labelled + 343 actives, NN ids, domain shift
@@ -855,7 +840,6 @@ print('secondary (maxT to all 645 >= %.2f): %d / %d = %.4f'
 if DS['screen_to_train']['median'] < 0.30:
     print('[warn] library is chemically far from training (median maxT < 0.30): ranking is extrapolation — read AD columns, not just rank.')
 
-
 # ===== CELL 16 =====
 # 15 — Ensemble (mean/std), AD-aware tiers, save outputs
 import os, numpy as np, pandas as pd
@@ -923,7 +907,6 @@ print('saved screening_full_regression.csv + hits_T1/T2/T3.csv')
 show = ['identifier', 'avg_pred_pic50', 'std_pred_pic50', 'maxT_464', 'nn_464_id', 'in_AD']
 print(lib[lib['tier'] == 'T1'].nlargest(15, 'avg_pred_pic50')[show].round(2).to_string(index=False))
 
-
 # ===== CELL 17 =====
 # 16 — QC plots: prediction spread, uncertainty, AD and parity
 import matplotlib.pyplot as plt
@@ -969,7 +952,6 @@ plt.tight_layout()
 plt.savefig('screening_regression_QC.png', dpi=120)
 plt.show()
 print('saved screening_regression_QC.png')
-
 
 # ===== CELL 18 =====
 # 17 — Acceptance report + run manifest (resume-safe)
@@ -1029,3 +1011,257 @@ for f in ['screening_full_regression.csv', 'hits_T1.csv', 'hits_T2.csv', 'hits_T
 print('cache:', sorted(os.listdir(CACHE_DIR)))
 print('[done] re-run is safe: downloads, fingerprints, models, predictions and AD are cached and skipped.')
 
+# ===== CELL 19 =====
+# 18 — FULL INPUT/OUTPUT AUDIT: every DL input, prediction, residual and error
+import os, json, numpy as np, pandas as pd, torch
+from torch_geometric.loader import DataLoader as _AuditLoader
+
+AUDIT = {'data': {}, 'models': {}, 'metrics': {}, 'checks': {}, 'screening': {}}
+SPLITS = [('train', tr, train_graphs), ('val', va, val_graphs), ('test', te, test_graphs)]
+
+print('=' * 82)
+print('DEEP-LEARNING INPUT AUDIT (features, targets, model config, devices)')
+print('=' * 82)
+for nm, ii, gs in SPLITS:
+    yt = np.asarray(raw_targets)[ii]
+    ns = np.array([int(g.num_nodes) for g in gs])
+    es = np.array([int(g.num_edges) for g in gs])
+    print('%-5s n=%3d | pIC50 min/mean/max %.3f / %.3f / %.3f | nodes %.1f+-%.1f | edges %.1f+-%.1f'
+          % (nm, len(gs), yt.min(), yt.mean(), yt.max(), ns.mean(), ns.std(), es.mean(), es.std()))
+    AUDIT['data'][nm] = dict(n=int(len(gs)), pic50_min=float(yt.min()), pic50_mean=float(yt.mean()),
+                             pic50_max=float(yt.max()), nodes_mean=float(ns.mean()), edges_mean=float(es.mean()))
+
+g0 = train_graphs[0]
+print('node feature dim: %d | edge_index: 2 x %d | target = scaled delta'
+      % (int(g0.x.shape[1]), int(g0.edge_index.shape[1])))
+print('sample INPUT (train graph 0) y_scaled = %.4f' % float(g0.y.view(-1)[0]))
+print('  x.shape', tuple(g0.x.shape), '| first 3 atom feature rows:')
+print(g0.x[:3].numpy())
+print('  edge_index[:, :5]:')
+print(g0.edge_index[:, :5].numpy())
+print('delta scaler: mean %.4f | scale %.4f (fit on 464 train only)'
+      % (float(scaler.mean_[0]), float(scaler.scale_[0])))
+print('model config: hidden=%d layers=%d batch=%d lr=%g wd=%g patience=%d'
+      % (GNN_HIDDEN, GNN_LAYERS, GNN_BATCH, GNN_LR, GNN_WD, GNN_PATIENCE))
+print('devices: dev0=%s | dev1=%s | cuda=%s | n_gpu=%d'
+      % (dev0, dev1, torch.cuda.is_available(), torch.cuda.device_count()))
+print('policy: 464 train / 52 val / 129 test | early stopping = val only | test scored once')
+
+print('')
+print('=' * 82)
+print('MODEL LOAD AUDIT (strict load, finite weights, parameter count)')
+print('=' * 82)
+MODELS, RAW_PRED = {}, {}
+for kind in ['gcn', 'gin']:
+    path = os.path.join(CACHE_DIR, kind + '_reg.pt')
+    model = GNNReg(kind=kind)
+    sd = torch_load_compat(path)
+    model.load_state_dict(sd)
+    dev = dev0 if kind == 'gcn' else dev1
+    model.to(dev).eval()
+    nonfinite = sum(int((~torch.isfinite(v)).sum().item()) for v in model.state_dict().values())
+    MODELS[kind] = (model, dev)
+    print('%s: params %d | state_dict tensors %d | non-finite weights %d | device %s'
+          % (kind.upper(), count_params(model), len(sd), nonfinite, dev))
+    print(model)
+    RAW_PRED[kind] = {}
+    for nm, ii, gs in SPLITS:
+        dl = _AuditLoader(gs, batch_size=SCREEN_BATCH, shuffle=False, num_workers=0)
+        out = []
+        with torch.no_grad():
+            for b in dl:
+                b = b.to(dev)
+                out.append(model(b.x, b.edge_index, b.batch).detach().cpu().numpy())
+        RAW_PRED[kind][nm] = np.concatenate(out)
+    AUDIT['models'][kind] = dict(params=int(count_params(model)), state_tensors=int(len(sd)),
+                                  nonfinite_weights=int(nonfinite), device=str(dev))
+
+def _audit_inv(p_scaled, idx):
+    d = scaler.inverse_transform(np.asarray(p_scaled).reshape(-1, 1)).ravel()
+    return np.clip(d + base_all[np.asarray(idx)], 0.0, 12.0)
+
+PIC50 = {k: {nm: _audit_inv(RAW_PRED[k][nm], ii) for nm, ii, _ in SPLITS} for k in ['gcn', 'gin']}
+max_saved_diff = 0.0
+for kind in ['gcn', 'gin']:
+    for nm in ['val', 'test']:
+        saved = preds_cache.get(kind + '_' + nm)
+        if saved is not None:
+            d = float(np.max(np.abs(np.asarray(saved) - PIC50[kind][nm])))
+            max_saved_diff = max(max_saved_diff, d)
+            print('recompute-vs-saved %s %s: max|diff| = %.2e' % (kind, nm, d))
+
+rows = []
+for nm, ii, gs in SPLITS:
+    for j, i in enumerate(ii):
+        i = int(i)
+        rows.append(dict(split=nm, row_index=i, identifier=str(train_ids[i]), smiles=str(smiles_train[i]),
+                         pIC50_true=float(raw_targets[i]), pIC50_baseline=float(base_all[i]),
+                         pIC50_gcn=float(PIC50['gcn'][nm][j]), pIC50_gin=float(PIC50['gin'][nm][j])))
+audit = pd.DataFrame(rows)
+audit['pIC50_ensemble'] = (audit.pIC50_gcn + audit.pIC50_gin) / 2.0
+for c in ['gcn', 'gin', 'ensemble']:
+    audit['resid_' + c] = audit.pIC50_true - audit['pIC50_' + c]
+    audit['abs_err_' + c] = audit['resid_' + c].abs()
+audit.to_csv('dl_full_predictions.csv', index=False)
+print('full prediction table:', audit.shape, '-> dl_full_predictions.csv')
+
+def _audit_metrics(t, p):
+    t = np.asarray(t, float)
+    p = np.asarray(p, float)
+    resid = t - p
+    ss_res = float((resid ** 2).sum())
+    ss_tot = float(((t - t.mean()) ** 2).sum())
+    slope, intercept = np.polyfit(t, p, 1)
+    return dict(n=int(len(t)), r2=float(1 - ss_res / max(ss_tot, 1e-12)),
+                rmse=float(np.sqrt((resid ** 2).mean())), mae=float(np.abs(resid).mean()),
+                bias=float(resid.mean()), resid_std=float(resid.std()),
+                cal_slope=float(slope), cal_intercept=float(intercept),
+                max_abs=float(np.abs(resid).max()), pred_min=float(p.min()), pred_max=float(p.max()))
+
+print('')
+print('=' * 82)
+print('OUTPUT / ERROR AUDIT (pIC50; residual = true - predicted)')
+print('=' * 82)
+print('%-6s %-8s %4s %7s %7s %7s %8s %9s %9s %9s %8s'
+      % ('split', 'model', 'n', 'R2', 'RMSE', 'MAE', 'bias', 'resid_sd', 'max|err|', 'cal_slope', 'cal_int'))
+for nm, ii, gs in SPLITS:
+    t = raw_targets[ii]
+    ens = (PIC50['gcn'][nm] + PIC50['gin'][nm]) / 2.0
+    for label, p in [('Ridge', base_all[ii]), ('GCN', PIC50['gcn'][nm]),
+                     ('GIN', PIC50['gin'][nm]), ('ENS', ens)]:
+        m = _audit_metrics(t, p)
+        AUDIT['metrics']['%s_%s' % (nm, label)] = m
+        print('%-6s %-8s %4d %7.3f %7.3f %7.3f %8.3f %9.3f %9.3f %9.3f %8.2f'
+              % (nm, label, m['n'], m['r2'], m['rmse'], m['mae'], m['bias'], m['resid_std'],
+                 m['max_abs'], m['cal_slope'], m['cal_intercept']))
+
+print('')
+print('TRAINING HISTORY — every epoch (model selected by best val R2)')
+max_ep = max(len(METRICS['gcn']['hist']), len(METRICS['gin']['hist']))
+hdf = pd.DataFrame({'epoch': np.arange(1, max_ep + 1)})
+for kind in ['gcn', 'gin']:
+    h = METRICS[kind]['hist']
+    hdf[kind + '_val_r2'] = pd.Series(h)
+    best_ep = int(np.argmax(h)) + 1
+    print('%s: %d epochs | best epoch %d | best val R2 %.4f | params %d'
+          % (kind.upper(), len(h), best_ep, max(h), METRICS[kind]['params']))
+    for ep, r2 in enumerate(h, 1):
+        print('  %s ep %03d  val_R2 %.4f%s' % (kind, ep, r2, '  <= BEST' if ep == best_ep else ''))
+hdf.to_csv('dl_training_history.csv', index=False)
+
+pd.set_option('display.max_rows', 400)
+pd.set_option('display.width', 250)
+pd.set_option('display.max_colwidth', 46)
+show = audit.copy()
+show['smiles'] = show['smiles'].str.slice(0, 46)
+cols = ['split', 'identifier', 'smiles', 'pIC50_true', 'pIC50_baseline', 'pIC50_gcn',
+        'pIC50_gin', 'pIC50_ensemble', 'resid_gcn', 'resid_gin', 'resid_ensemble']
+print('')
+print('FULL 645-ROW OUTPUT TABLE (train + val + test; every compound, every prediction)')
+print('NOTE: train rows are in-sample (fit data), not accuracy estimates; val/test rows are held out.')
+print(show[cols].round(3).to_string(index=False))
+
+print('')
+print('WORST 8 ABSOLUTE ERRORS PER SPLIT (ensemble)')
+for nm in ['train', 'val', 'test']:
+    sub = audit[audit.split == nm].nlargest(8, 'abs_err_ensemble').copy()
+    sub['smiles'] = sub['smiles'].str.slice(0, 42)
+    print('-- %s --' % nm)
+    print(sub[['identifier', 'smiles', 'pIC50_true', 'pIC50_gcn', 'pIC50_gin',
+               'pIC50_ensemble', 'resid_ensemble']].round(3).to_string(index=False))
+
+print('')
+print('SIGNED BIAS BY TRUE pIC50 BIN (ensemble; negative = over-prediction)')
+audit['true_bin'] = pd.cut(audit.pIC50_true, bins=[0, 6, 7, 8, 9, 12])
+print(audit.groupby(['split', 'true_bin'], observed=True)['resid_ensemble']
+      .agg(['count', 'mean']).round(3).to_string())
+
+print('')
+print('=' * 82)
+print('SCREENING INPUT/OUTPUT AUDIT (SMILES -> graph -> prediction -> saved CSV)')
+print('=' * 82)
+SPATH = 'screening_full_regression.csv'
+if os.path.exists(SPATH):
+    scr = pd.read_csv(SPATH)
+    print('rows %d | columns %d | pred_gcn non-null %d | pred_gin non-null %d | maxT_464 non-null %d'
+          % (len(scr), scr.shape[1], int(scr.pred_gcn_pic50.notna().sum()),
+             int(scr.pred_gin_pic50.notna().sum()), int(scr.maxT_464.notna().sum())))
+    print('range: GCN %.2f..%.2f | GIN %.2f..%.2f | ENS %.2f..%.2f | std %.3f..%.3f'
+          % (scr.pred_gcn_pic50.min(), scr.pred_gcn_pic50.max(), scr.pred_gin_pic50.min(),
+             scr.pred_gin_pic50.max(), scr.avg_pred_pic50.min(), scr.avg_pred_pic50.max(),
+             scr.std_pred_pic50.min(), scr.std_pred_pic50.max()))
+    print('in_AD %d (%.2f%%) | tiers %s'
+          % (int(scr.in_AD.sum()), 100.0 * float(scr.in_AD.mean()),
+             {str(k): int(v) for k, v in scr.tier.value_counts().items()}))
+
+    chk = {}
+    chk['screening_coverage'] = bool(scr.pred_gcn_pic50.notna().all() and scr.pred_gin_pic50.notna().all())
+    chk['screening_predictions_finite'] = bool(np.isfinite(scr[['pred_gcn_pic50', 'pred_gin_pic50']].values).all())
+    chk['screening_pred_in_0_12'] = bool(((scr.pred_gcn_pic50 >= 0) & (scr.pred_gcn_pic50 <= 12)).all()
+                                         and ((scr.pred_gin_pic50 >= 0) & (scr.pred_gin_pic50 <= 12)).all())
+    chk['avg_is_mean_of_two'] = bool(np.allclose(scr.avg_pred_pic50,
+                                                 (scr.pred_gcn_pic50 + scr.pred_gin_pic50) / 2.0, atol=1e-6))
+    chk['in_AD_flag_consistent'] = bool((scr.in_AD == (scr.maxT_464 >= AD_CUT)).all())
+    chk['tier_values_valid'] = bool(scr.tier.isin(['T1', 'T2', 'T3']).all())
+
+    pick = pd.concat([
+        scr.nlargest(2, 'avg_pred_pic50'),
+        scr[scr.in_AD].nlargest(2, 'avg_pred_pic50'),
+        scr[scr.in_AD].sample(1, random_state=RANDOM_SEED),
+    ]).drop_duplicates(subset=['identifier', 'canonical_smiles']).head(5)
+    print('spot-check: rebuilding graph + re-predicting %d saved rows' % len(pick))
+    spot_rows = []
+    for _, r in pick.iterrows():
+        g = mol_to_graph(r['canonical_smiles'], 0.0)
+        d = rdkit_desc(r['canonical_smiles'])
+        base = 0.0 if d is None else float(baseline_model.predict(np.asarray([d], dtype=float))[0])
+        vals = {}
+        for kind in ['gcn', 'gin']:
+            model, dev = MODELS[kind]
+            if g is None:
+                vals[kind] = float('nan')
+                continue
+            gg = g.to(dev)
+            batch = torch.zeros(gg.num_nodes, dtype=torch.long, device=dev)
+            with torch.no_grad():
+                ps = float(model(gg.x, gg.edge_index, batch).item())
+            vals[kind] = float(np.clip(scaler.inverse_transform([[ps]])[0, 0] + base, 0.0, 12.0))
+        spot_rows.append(dict(identifier=r['identifier'], smiles=str(r['canonical_smiles'])[:40],
+                              saved_gcn=float(r['pred_gcn_pic50']), recomputed_gcn=vals['gcn'],
+                              saved_gin=float(r['pred_gin_pic50']), recomputed_gin=vals['gin'],
+                              max_abs_diff=max(abs(vals['gcn'] - float(r['pred_gcn_pic50'])),
+                                               abs(vals['gin'] - float(r['pred_gin_pic50'])))))
+    spot = pd.DataFrame(spot_rows)
+    print(spot.round(3).to_string(index=False))
+    chk['screening_recompute_match'] = bool(spot.max_abs_diff.max() < 1e-3)
+    AUDIT['checks'].update(chk)
+    AUDIT['screening'] = dict(rows=int(len(scr)), in_AD=int(scr.in_AD.sum()),
+                              tiers={str(k): int(v) for k, v in scr.tier.value_counts().items()},
+                              spotcheck=json.loads(spot.round(6).to_json(orient='records')))
+else:
+    print('[skip] screening_full_regression.csv not found')
+
+AUDIT['checks']['graph_counts_match_split'] = bool(len(train_graphs) == len(tr)
+                                                   and len(val_graphs) == len(va)
+                                                   and len(test_graphs) == len(te))
+AUDIT['checks']['split_464_52_129'] = bool(len(tr) == 464 and len(va) == 52 and len(te) == 129)
+AUDIT['checks']['full_table_rows_645'] = bool(len(audit) == 645)
+AUDIT['checks']['all_predictions_finite'] = bool(np.isfinite(audit[['pIC50_gcn', 'pIC50_gin']].values).all())
+AUDIT['checks']['model_weights_finite'] = bool(all(AUDIT['models'][k]['nonfinite_weights'] == 0
+                                                   for k in ['gcn', 'gin']))
+AUDIT['checks']['recompute_matches_saved'] = bool(max_saved_diff < 1e-6)
+
+print('')
+print('=' * 82)
+print('AUDIT SUMMARY (PASS/FAIL)')
+print('=' * 82)
+for k, v in AUDIT['checks'].items():
+    print('%-32s %s' % (k, 'PASS' if v else 'FAIL'))
+print('')
+print('INTERPRETATION: R2/RMSE/MAE above are the honest test errors (test scored once).')
+print('Residual bias near 0 = no systematic over/under-prediction; cal_slope near 1 = calibrated.')
+print('Library predictions are extrapolation for most rows — always filter with in_AD.')
+json.dump(AUDIT, open('dl_audit.json', 'w'), indent=2)
+for f in ['dl_full_predictions.csv', 'dl_training_history.csv', 'dl_audit.json']:
+    print('  [out] %s (%.2f MB)' % (f, os.path.getsize(f) / 1e6))
+print('[done] full DL input/output audit saved. Every row is in dl_full_predictions.csv.')

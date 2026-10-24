@@ -621,3 +621,17 @@ Recipe + rules: InChIKey dedupe → **L1/L6 leak filter: Tanimoto ≥ 0.85 OR sa
 - **Duplicates**: CNP0234138.1/.2, CNP0505565.1-.4, CNP0049127.1-.3 give identical predictions (stereoisomers/duplicates) — collapse these before any wet-lab selection.
 - **Kaggle**: notebook is importable and self-contained; Settings → Accelerator GPU T4 ×2, Internet ON, Persistence Files; Run All. Auto-selects cuda:0/cuda:1 for parallel GCN/GIN training and screening; CPU fallback verified locally.
 - **Validation**: `nbformat.validate` valid; all code cells AST-clean; zero error outputs; `run_manifest.json` and `cache/domain_shift.json` match the printed tables.
+
+## 2026-10-24 (audit) — Full DL input/output verification cell
+- Notebook is now **20 cells (1 markdown + 19 code)**; flat Kaggle file regenerated to **1,267 lines / 57,579 bytes**, AST-clean, with every notebook code line present.
+- New final cell `# 18 — FULL INPUT/OUTPUT AUDIT` prints:
+  - split sizes, pIC50 ranges, graph node/edge stats, first 3 atom-feature rows and first 5 edges of a real training graph;
+  - delta-scaler mean/scale, model config, devices, split policy;
+  - full GCN/GIN model summaries, strict state-dict load and non-finite-weight count;
+  - **every epoch** of validation R2 (training loop now prints every epoch, not every 10);
+  - the **complete 645-row prediction table** (train + val + test; SMILES, true pIC50, Ridge/GCN/GIN/ensemble, residuals), with in-sample vs held-out clearly marked;
+  - worst 8 absolute errors per split, signed bias by true-pIC50 bin;
+  - a screening **SMILES → graph → prediction → saved CSV** spot-check.
+- Saved `dl_full_predictions.csv` (645 rows), `dl_training_history.csv`, `dl_audit.json`.
+- Audit result: **13/13 PASS**; test ensemble R2 0.666 / RMSE 1.063 / MAE 0.768; test bias −0.525, calibration slope 0.696. Low-pIC50 test bin (0,6] bias −1.059 (systematic over-prediction of weak compounds) — the main honest error pattern; worst test error 3.43 pIC50 (CHEMBL3703675). Screening coverage 154,587/154,587, in_AD 886, spot-check max|diff| 1e-6.
+- Notebook executed end-to-end with nbclient: 19/19 code cells, zero error outputs; audit output ~127 KB.
