@@ -1,0 +1,8 @@
+{
+  "ad_cut": 0.4,
+  "rf_t1_cut": 0.6,
+  "rf_t2_cut": 0.4,
+  "gnn_hit_cut": 7.0,
+  "source": "repo restructure; strict AD made explicit",
+  "ad_cut_strict": 0.52
+}
