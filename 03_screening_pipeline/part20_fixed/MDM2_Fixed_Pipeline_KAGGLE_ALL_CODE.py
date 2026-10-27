@@ -1726,6 +1726,72 @@ _diag_raw = lib.nlargest(100, 'pred_ensemble_pic50')
 _diag_ad[out_cols].to_csv('diagnostic_top100_AD.csv', index=False)
 _diag_raw[out_cols].to_csv('diagnostic_top100_raw.csv', index=False)
 
+# ---- 5. Nearest-training / novelty annotation (post-processing, no model change) ----
+def _annotate_similarity(frame):
+    """Attach explicit nearest-training evidence and novelty status to every row."""
+    f = frame.copy()
+    if 'maxT_464' not in f.columns or 'nn_464_id' not in f.columns:
+        return f
+    f['nearest_train_id'] = f['nn_464_id'].astype(str).replace({'nan': '', 'None': ''})
+    f['nearest_train_similarity'] = pd.to_numeric(
+        f['maxT_464'], errors='coerce').clip(0.0, 1.0)
+    f.loc[f['nearest_train_id'].eq(''), 'nearest_train_similarity'] = np.nan
+    _meta = pd.DataFrame({
+        'train_id': TRAIN_IDS,
+        'train_class': np.where(_yy[tr] == 1, 'Active', 'Inactive'),
+        'train_pIC50': raw_targets[tr],
+    }).drop_duplicates('train_id').set_index('train_id')
+    f['nearest_train_class'] = f['nearest_train_id'].map(_meta['train_class'])
+    f['nearest_train_pIC50'] = f['nearest_train_id'].map(_meta['train_pIC50'])
+    f['similarity_informative'] = (
+        f['nearest_train_similarity'].notna() & f['nearest_train_id'].ne(''))
+    f['near_training'] = np.select(
+        [~f['similarity_informative'],
+         f['nearest_train_similarity'] >= 0.99,
+         f['nearest_train_similarity'] >= AD_CUT_STRICT,
+         f['nearest_train_similarity'] >= AD_CUT],
+        ['unknown', 'exact_or_near_exact', 'near_strict', 'borderline_legacy'],
+        default='far')
+    f['known_training_compound'] = (
+        f['similarity_informative'] & (f['nearest_train_similarity'] >= 0.99))
+    _ad_pass = f['ad_pass'] if 'ad_pass' in f.columns else pd.Series(False, index=f.index)
+    _ad_pass = _ad_pass.fillna(False).astype(bool)
+    f['novelty_claim_allowed'] = _ad_pass & ~f['known_training_compound']
+    f['prediction_status'] = np.select(
+        [f['known_training_compound'], _ad_pass],
+        ['known_training_compound', 'AD_supported_prediction'],
+        default='extrapolation_no_novelty_claim')
+    if 'candidate_status' in f.columns:
+        f.loc[f['known_training_compound'], 'candidate_status'] = 'known_training_compound'
+    if 'evidence_level' in f.columns:
+        f.loc[f['known_training_compound'], 'evidence_level'] = 'training_match'
+    return f
+
+for _fname in ['screening_full_regression.csv', 'shortlist_low_confidence.csv',
+               'diagnostic_top100_AD.csv', 'diagnostic_top100_raw.csv',
+               'threshold_T1_not_hits.csv', 'threshold_T2_not_hits.csv',
+               'threshold_T3_not_hits.csv']:
+    if not os.path.exists(_fname):
+        continue
+    try:
+        _frame = pd.read_csv(_fname)
+    except Exception:
+        continue
+    if 'maxT_464' not in _frame.columns or 'nn_464_id' not in _frame.columns:
+        continue
+    _frame = _annotate_similarity(_frame)
+    if _fname.startswith('shortlist') or _fname.startswith('diagnostic'):
+        _frame = _frame[~_frame['known_training_compound']].copy()
+    _frame.to_csv(_fname, index=False)
+
+_full = pd.read_csv('screening_full_regression.csv')
+_overlap = _full[_full['known_training_compound']].copy()
+_overlap.to_csv('training_overlap.csv', index=False)
+print('[similarity] known/near-exact training compounds: %d | near_strict: %d | borderline_legacy: %d'
+      % (int(_overlap.shape[0]), int((_full['near_training'] == 'near_strict').sum()),
+         int((_full['near_training'] == 'borderline_legacy').sum())))
+print('[similarity] training_overlap.csv written; exact training compounds excluded from shortlist/diagnostic tables')
+
 with open('README_SHORTLIST.txt', 'w') as _fh:
     _fh.write(
         'MDM2 Part_20 screening: low-confidence hypothesis shortlist\n'
