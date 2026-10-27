@@ -41,7 +41,8 @@ keeps old notebooks and hard-coded paths working without duplicating data:
 - `Part_9` … `Part_20_Fixed` -> the matching new folders
 - `cuts.json`, `diary.md`, `REFERENCES.md`, and the root data CSV are symlinks
 
-Do not recreate full copies at the old paths.
+
+
 
 ## Provenance
 
