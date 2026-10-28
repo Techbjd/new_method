@@ -1,4 +1,5 @@
 Part_17/data/featurized_coconut.npz
+02_gnn_models/part17_pretrain_finetune/data/featurized_coconut.npz
 *.pyc
 __pycache__/
 
@@ -6,3 +7,8 @@ __pycache__/
 Part_20_Fixed/cache/
 Part_20_Fixed/data/
 Part_20_Fixed/screening_full_regression.csv
+03_screening_pipeline/part20_fixed/cache/
+03_screening_pipeline/part20_fixed/screening_full_regression.csv
+
+# agent-harness local state
+.opencode/
