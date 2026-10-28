@@ -52,8 +52,15 @@ except Exception:                                    # pragma: no cover
 # -----------------------------------------------------------------------------
 # 0. Paths / configuration
 # -----------------------------------------------------------------------------
-HERE = Path(__file__).resolve().parent
-REPO_ROOT = HERE.parent.parent                       # .../<repo>
+try:                                                 # run as a script
+    HERE = Path(__file__).resolve().parent
+    REPO_ROOT = HERE.parent.parent                   # .../<repo>
+except NameError:                                    # pasted in a notebook cell
+    HERE = Path.cwd().resolve()
+    REPO_ROOT = None
+    NOTEBOOK = True
+else:
+    NOTEBOOK = False
 
 IS_KAGGLE = Path("/kaggle").exists()
 SMOKE = os.environ.get("MDM2_PART21_SMOKE", "0") == "1"
@@ -61,8 +68,11 @@ SMOKE = os.environ.get("MDM2_PART21_SMOKE", "0") == "1"
 if IS_KAGGLE:
     DEFAULT_INPUT_DIR = Path("/kaggle/input/mdm2-part21")
     DEFAULT_OUTPUT_DIR = Path("/kaggle/working/mdm2_part21_outputs")
-else:
+elif REPO_ROOT is not None:                          # run as a script
     DEFAULT_INPUT_DIR = REPO_ROOT / "00_data"
+    DEFAULT_OUTPUT_DIR = HERE / "outputs"
+else:                                                # notebook outside Kaggle
+    DEFAULT_INPUT_DIR = HERE / "00_data"             # cwd-relative repo layout
     DEFAULT_OUTPUT_DIR = HERE / "outputs"
 
 INPUT_DIR = Path(os.environ.get("MDM2_PART21_INPUT_DIR", DEFAULT_INPUT_DIR))
@@ -89,6 +99,8 @@ REPORT = {"started": time.strftime("%Y-%m-%d %H:%M:%S"), "checks": {}}
 
 
 def _rel(p):
+    if REPO_ROOT is None:
+        return str(p)
     try:
         return str(Path(p).resolve().relative_to(REPO_ROOT))
     except ValueError:
@@ -115,8 +127,9 @@ def find_input(name: str) -> Path:
         INPUT_DIR / "data" / name,
         INPUT_DIR / "inputs" / name,
         INPUT_DIR / "part21" / name,
-        REPO_ROOT / rel,
     ]
+    if REPO_ROOT is not None:
+        candidates.append(REPO_ROOT / rel)   # script mode: repo-relative data
     for c in candidates:
         if c.is_file():
             return c
@@ -142,6 +155,28 @@ def check(name, status, **details):
     tag = {"PASS": "PASS", "FAIL": "FAIL"}.get(status, status)
     print(f"[verify] {tag}  {name}  {details if status != 'PASS' else ''}")
     return status == "PASS"
+
+
+def ensure_rdkit():
+    """Kaggle notebook images sometimes lack rdkit; install it once up front."""
+    try:
+        import rdkit  # noqa: F401
+        return True
+    except ImportError:
+        import subprocess
+        print("[setup] rdkit missing; installing via pip (rdkit) ...")
+        r = subprocess.run([sys.executable, "-m", "pip", "install", "-q", "rdkit"],
+                           capture_output=True)
+        if r.returncode == 0:
+            try:
+                import rdkit  # noqa: F401
+                print("[setup] rdkit installed OK")
+                return True
+            except ImportError:
+                pass
+        print("[setup] pip install rdkit failed:",
+              (r.stderr or b"").decode()[-400:])
+        return False
 
 
 # -----------------------------------------------------------------------------
@@ -288,6 +323,18 @@ def scaffold_split(df: pd.DataFrame):
 MORGAN_BITS = 2048
 MORGAN_RADIUS = 2
 DESC_FUNCS = None
+_MORGAN_GEN = None
+
+
+def _morgan_gen():
+    """Modern RDKit Morgan generator (replaces deprecated
+    AllChem.GetMorganFingerprintAsBitVect -> no deprecation warnings)."""
+    global _MORGAN_GEN
+    if _MORGAN_GEN is None:
+        from rdkit.Chem import rdFingerprintGenerator
+        _MORGAN_GEN = rdFingerprintGenerator.GetMorganGenerator(
+            radius=MORGAN_RADIUS, fpSize=MORGAN_BITS)
+    return _MORGAN_GEN
 
 
 def _desc_names():
@@ -302,15 +349,11 @@ def _desc_names():
 
 
 def fp_of(smiles):
-    from rdkit import Chem, DataStructs
-    from rdkit.Chem import AllChem
+    from rdkit import Chem
     mol = Chem.MolFromSmiles(smiles)
     if mol is None:
         return None
-    fp = AllChem.GetMorganFingerprintAsBitVect(mol, MORGAN_RADIUS, nBits=MORGAN_BITS)
-    arr = np.zeros((MORGAN_BITS,), dtype=np.float32)
-    DataStructs.ConvertToNumpyArray(fp, arr)
-    return arr
+    return _morgan_gen().GetFingerprintAsNumPy(mol).astype(np.float32)
 
 
 def desc_of(smiles):
@@ -661,6 +704,13 @@ def finalize_report(elapsed, metrics):
 
 def run_pipeline():
     t0 = time.time()
+    if not ensure_rdkit():
+        REPORT["checks"]["rdkit_available"] = {"status": "FAIL",
+                                               "note": "pip install failed; "
+                                                       "turn ON internet or attach the "
+                                                       "'mdm2-part21' dataset files"}
+        print("[fatal] rdkit is required for scaffold splitting and featurization")
+        raise RuntimeError("rdkit unavailable")
     cuts = load_cuts()
     print(f"[setup] SMOKE={SMOKE}  input={_rel(INPUT_DIR)}  output={_rel(OUT_DIR)}")
     train_raw = load_training()
@@ -745,18 +795,15 @@ def run_pipeline():
 
     # applicability domain: max Tanimoto sim to training set
     from rdkit import Chem, DataStructs
-    from rdkit.Chem import AllChem
-    train_fps = [AllChem.GetMorganFingerprintAsBitVect(
-        m, MORGAN_RADIUS, nBits=MORGAN_BITS)
-        for m in (Chem.MolFromSmiles(s) for s in clean_smiles) if m is not None]
+    train_fps = [_morgan_gen().GetFingerprint(m)
+                 for m in (Chem.MolFromSmiles(s) for s in clean_smiles) if m is not None]
     max_sim = np.zeros(len(screen_kept))
     for qi, s in enumerate(screen_kept["canonical_smiles"]):
         m = Chem.MolFromSmiles(s)
         if m is None:
             continue
-        sims = DataStructs.BulkTanimotoSimilarity(
-            AllChem.GetMorganFingerprintAsBitVect(m, MORGAN_RADIUS, nBits=MORGAN_BITS),
-            train_fps)
+        sims = DataStructs.BulkTanimotoSimilarity(_morgan_gen().GetFingerprint(m),
+                                                  train_fps)
         max_sim[qi] = max(sims) if sims else 0.0
 
     top_r, top_c = top50_table(pred_pIC50_s, prob_active_s,
@@ -788,8 +835,9 @@ def run_pipeline():
 
 
 def main():
+    code = 0
     try:
-        sys.exit(run_pipeline())
+        code = run_pipeline()
     except Exception as exc:
         traceback.print_exc()
         REPORT["checks"]["pipeline_error"] = {"status": "FAIL",
@@ -797,7 +845,12 @@ def main():
         OUT_DIR.mkdir(parents=True, exist_ok=True)
         (OUT_DIR / "verification_report.json").write_text(
             json.dumps(REPORT, indent=2, default=str))
-        sys.exit(2)
+        code = 2
+    if NOTEBOOK:
+        # a notebook cell must not die with SystemExit when pasted
+        print(f"[part21] cell finished with exit code {code}")
+        return code
+    sys.exit(code)
 
 
 if __name__ == "__main__":
