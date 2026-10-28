@@ -48,6 +48,11 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import warnings
+
+# cosmetic-only warnings (LightGBM feature-name spam; first CUDA-context priming)
+warnings.filterwarnings("ignore", message="X does not have valid feature names")
+warnings.filterwarnings("ignore", message="Attempting to run cuBLAS")
 
 try:
     import torch
@@ -756,8 +761,11 @@ def train_graph_net(kind, tr_gs, ytr_r, ytr_c, epochs=None, params=None):
             x, ei, ef, bi, nn_ = graph_collate([tr_gs[i] for i in order[s:s + 64]], dev)
             opt.zero_grad()
             pr, pc = gnet(x, ei, ef, bi, nn_)
-            loss = mse(pr, torch.tensor(ytr_r[order[s:s + 64]]).to(dev)) + \
-                bce(pc, torch.tensor(ytr_c[order[s:s + 64]].astype(float)).to(dev))
+            yr_t = torch.as_tensor(ytr_r[order[s:s + 64]],
+                                   dtype=torch.float32, device=dev)
+            yc_t = torch.as_tensor(ytr_c[order[s:s + 64]],
+                                   dtype=torch.float32, device=dev)
+            loss = mse(pr, yr_t) + bce(pc, yc_t)
             loss.backward()
             opt.step()
             tot += float(loss.detach())
