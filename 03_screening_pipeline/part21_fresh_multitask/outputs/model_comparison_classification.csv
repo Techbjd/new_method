@@ -1,0 +1,10 @@
+model,train_time_s,used_in_screening_ensemble,cv_mean,cv_std,cv_best_params,val_auc_roc,val_auc_pr,test_auc_roc,test_auc_pr,test_balanced_accuracy
+multitask_net,1.6,True,0.7823,0.0448,"{""hidden"": 128, ""lr"": 0.001}",0.8333,0.9028,0.9833,0.9742,0.95
+sklearn_hist_gb,2.8,True,0.8878,0.0711,"{""max_iter"": 200, ""learning_rate"": 0.1}",0.6667,0.85,0.9667,0.9437,0.95
+xgboost,0.3,True,0.8891,0.0476,"{""n_estimators"": 400, ""max_depth"": 4, ""learning_rate"": 0.05}",0.6667,0.85,0.95,0.9062,0.8667
+extra_trees,0.8,True,0.8656,0.1503,"{""n_estimators"": 600, ""max_depth"": 16}",0.6667,0.85,0.95,0.9062,0.95
+random_forest,1.0,True,0.8741,0.1479,"{""n_estimators"": 600, ""max_depth"": null}",0.6667,0.85,0.95,0.9062,0.95
+lightgbm,0.0,True,0.9097,0.071,"{""num_leaves"": 31, ""learning_rate"": 0.05}",0.6667,0.85,0.9333,0.8575,0.95
+svm,0.0,False,0.7687,0.0895,"{""C"": 10.0}",0.6667,0.85,0.9,0.8616,0.7
+mpnn,9.4,True,0.5956,0.0515,"{""hidden"": 128, ""n_layers"": 3, ""lr"": 0.001}",0.5,0.7111,0.6667,0.5137,0.5
+gin,1.0,True,0.5902,0.0737,"{""hidden"": 64, ""n_layers"": 2, ""lr"": 0.0003}",0.3333,0.6556,0.6,0.3912,0.5

@@ -20,19 +20,30 @@ prob_class_0 / prob_class_1 columns are dropped on load).
    tracks, each with its own printed metrics block (RMSE/MAE/R2 for
    regression; AUC-ROC, AUC-PR, balanced accuracy, per-class probability
    means for classification).
-6. Three model families:
-   - XGBoost regressor + XGBoost classifier,
-   - PyTorch multitask network (shared trunk, 2 heads),
-   - optional **ChemBERTa fine-tuning** (two separate fine-tunes) —
-     wrapped in `nn.DataParallel`, so a Kaggle session with 2× T4 trains
-     on **both GPUs** (fallback: 1 GPU → CPU).
-7. Screens the 154,647-molecule library, adds an applicability-domain gate
-   (max Tanimoto similarity to training; `ad_cut_strict = 0.52` from
-   cuts.json), and writes the TOP-50 tables:
-   - `top50_regression.csv` (ranked by predicted pIC50)
-   - `top50_classification.csv` (ranked by probability of being active)
-   Both are also printed to stdout.
-8. Writes `verification_report.json` + `run_manifest.json` (SHA256 of every
+6. **Multiple competing models** — every model trains on the same
+   leakage-safe split and competes in per-task leaderboards:
+   - Tabular: `xgboost`, `random_forest`, `extra_trees`, `lightgbm`
+     (auto pip-install if missing), `sklearn_hist_gb`, `svr_rbf`/`svc_rbf`
+     (SVM excluded from the screening ensemble only because predicting
+     154k molecules with RBF kernels is impractical).
+   - Deep learning: PyTorch **multitask network** (shared trunk, 2 heads),
+     **GIN** and **MPNN** graph networks trained on RDKit molecular graphs
+     (atoms = nodes, bonds = edges).
+   - Large pretrained transformers, each fine-tuned with a separate
+     regression head and a separate classification head, wrapped in
+     `nn.DataParallel`, so a Kaggle session with 2× T4 fine-tunes on
+     **both GPUs** (fallback: 1 GPU → CPU): ChemBERTa-zinc-base,
+     ChemBERTa-77M-MLM (DeepChem), MoLFormer-XL.
+7. All models vote on the screening library: per-model scores are saved in
+   `screening_scores_all_models.csv` and the TOP-50 tables use the
+   all-model ensemble mean:
+   - `model_comparison_regression.csv` / `model_comparison_classification.csv`
+     — the leaderboard CSVs (also printed).
+   - `top50_regression.csv` (ranked by ensemble predicted pIC50)
+   - `top50_classification.csv` (ranked by ensemble probability of active)
+8. Applicability-domain gate on every molecule (max Tanimoto similarity to
+   training; `ad_cut_strict = 0.52` from cuts.json).
+9. Writes `verification_report.json` + `run_manifest.json` (SHA256 of every
    artifact) into the output folder.
 
 ## Run on Kaggle (2 GPUs)
@@ -57,11 +68,13 @@ python3 verify_pipeline.py        # 13 checks, verbose PASS/FAIL, exit 0 on gree
 
 | Flag | Meaning |
 |---|---|
-| `MDM2_PART21_SMOKE=1` | tiny dry run (150 train / 300 screening rows), no ChemBERTa |
-| `MDM2_PART21_USE_CHEMBERTA=1` | force ChemBERTa even in smoke mode |
-| `MDM2_PART21_SKIP_CHEMBERTA=1` | force ChemBERTa off |
+| `MDM2_PART21_SMOKE=1` | tiny dry run (150 train / 300 screening rows), no large models |
+| `MDM2_PART21_USE_CHEMBERTA=1` | force large-model fine-tuning even in smoke mode |
+| `MDM2_PART21_SKIP_CHEMBERTA=1` | force large-model suite off |
+| `MDM2_PART21_SCREEN_LARGE_MODELS=1` | also score the library with the fine-tuned transformers (adds GPU time) |
 | `MDM2_PART21_INPUT_DIR` / `MDM2_PART21_OUTPUT_DIR` | path overrides |
 | `MDM2_PART21_EPOCHS` | override multitask-net epochs (default 150) |
+| `MDM2_PART21_GNN_EPOCHS` | override GIN/MPNN epochs (default 60) |
 
 ## Guarantees checked by the built-in verifier
 

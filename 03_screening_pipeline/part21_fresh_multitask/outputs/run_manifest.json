@@ -1,15 +1,23 @@
 {
   "output_dir": "03_screening_pipeline/part21_fresh_multitask/outputs",
   "files": [
+    "cv_scan_results.json",
+    "model_comparison_classification.csv",
+    "model_comparison_regression.csv",
     "run_manifest.json",
+    "screening_scores_all_models.csv",
     "top50_classification.csv",
     "top50_regression.csv",
     "verification_report.json"
   ],
   "sha256": {
-    "03_screening_pipeline/part21_fresh_multitask/outputs/run_manifest.json": "277cda8a3fc6b6b6a9e70dff7d6d2e7682c0c0cafc6f8cd49ede35c2d33f264a",
-    "03_screening_pipeline/part21_fresh_multitask/outputs/top50_classification.csv": "c59d2af3f339ea5f88a133e14f5ce7437dbb2cbc30fd6138d3c747bfefc701ce",
-    "03_screening_pipeline/part21_fresh_multitask/outputs/top50_regression.csv": "2bbb6e08317d9507876117760d122ede35332ee070298185477d25c298ce9a69",
-    "03_screening_pipeline/part21_fresh_multitask/outputs/verification_report.json": "c0730c981072c2986e20b20542de81352e4c49043941caf5fb19fa44d403b4f3"
+    "03_screening_pipeline/part21_fresh_multitask/outputs/cv_scan_results.json": "09262305abab2e8b1b61c5aefdd201b29530a86d2483059fed5092b236092aca",
+    "03_screening_pipeline/part21_fresh_multitask/outputs/model_comparison_classification.csv": "a0282358676c301e4604c11b72bb8373edafd3349c7be8f2bfb2e93f2a98df6a",
+    "03_screening_pipeline/part21_fresh_multitask/outputs/model_comparison_regression.csv": "f97313c4fd88620207e721c75697c7e274f3cda2d12f6c9b8fdb96f2c5692372",
+    "03_screening_pipeline/part21_fresh_multitask/outputs/run_manifest.json": "6b0072796c802472816dfaaccd52c2ade1d2dca212be0e55d206e7733a1b97d9",
+    "03_screening_pipeline/part21_fresh_multitask/outputs/screening_scores_all_models.csv": "c5dcb505df96fdae1f697331d6bc16faa5627ddc468b89f78b706a09e1055b36",
+    "03_screening_pipeline/part21_fresh_multitask/outputs/top50_classification.csv": "54e3b3daa9bec2f16091d63e2661c1f6a1bd5079ea17841c634ccba5286ce040",
+    "03_screening_pipeline/part21_fresh_multitask/outputs/top50_regression.csv": "2ec406e553ef4364e7787756c1ae1a89c3818762a117543390b0b4fe37fdbb7c",
+    "03_screening_pipeline/part21_fresh_multitask/outputs/verification_report.json": "f492e40f360cb1352e67ffdc513356e9f830666dfa5ac29c2a237238586e034c"
   }
 }

@@ -25,15 +25,22 @@
 #
 # Environment overrides (all optional):
 #   MDM2_PART21_INPUT_DIR / MDM2_PART21_OUTPUT_DIR
-#   MDM2_PART21_SMOKE=1          tiny dry-run (subsample; no ChemBERTa)
-#   MDM2_PART21_USE_CHEMBERTA=1  force ChemBERTa fine-tuning
-#   MDM2_PART21_SKIP_CHEMBERTA=1 force ChemBERTa off
-#   MDM2_PART21_EPOCHS           override torch multitask epochs
+#   MDM2_PART21_SMOKE=1                tiny dry-run (subsample; no large models)
+#   MDM2_PART21_USE_CHEMBERTA=1        force large-model fine-tuning even in smoke
+#   MDM2_PART21_SKIP_CHEMBERTA=1       force the large-model suite off
+#   MDM2_PART21_SCREEN_LARGE_MODELS=1  score the library with the large models
+#   MDM2_PART21_SKIP_SCAN=1            skip the 5-fold CV hyperparameter scan
+#   MDM2_PART21_SCAN_EPOCHS            DL-scan epochs per fold (default 40; smoke 3)
+#   MDM2_PART21_SKIP_LARGE_CV=1        skip the large-model LR mini-scan
+#   MDM2_PART21_EPOCHS                 override torch multitask epochs
+#   MDM2_PART21_GNN_EPOCHS             override GIN/MPNN epochs
 # =============================================================================
 import hashlib
+import importlib
 import json
 import math
 import os
+import re
 import sys
 import time
 import traceback
@@ -409,6 +416,100 @@ def train_xgb(task, X, y, seed=SEED):
     return model
 
 
+def _eval_record(model, name, task, Xva, yva, Xte, yte, t0, screening_ok,
+                 cv=None):
+    """Fit-independent evaluation record for one trained model."""
+    tag = task[:3].upper()
+    if task == "regression":
+        val_m = regression_metrics(yva, model.predict(Xva))
+        te_m = regression_metrics(yte, model.predict(Xte))
+        print(f"[regression] {tag}  {name:<16} test: rmse={te_m['rmse']:.3f} "
+              f"r2={te_m['r2']:+.3f}")
+    else:
+        val_m = classification_metrics(
+            yva, model.predict_proba(Xva)[:, 1])
+        te_m = classification_metrics(
+            yte, model.predict_proba(Xte)[:, 1])
+        print(f"[classification] {tag}  {name:<16} test: "
+              f"auc={te_m['auc_roc']:.3f} bal_acc={te_m['balanced_accuracy']:.3f}")
+    rt = round(time.time() - t0, 1)
+    rec = {"model": name, "_model": model, "val": val_m, "test": te_m,
+           "train_time_s": rt, "screening_ok": screening_ok}
+    if cv:
+        rec["cv_best"] = cv[0]
+    return rec
+
+
+def train_all_tabular(task, Xtr, ytr, Xva, yva, Xte, yte, scan_results=None):
+    """Train EVERY tabular model for ONE task (best params from the CV scan)."""
+    records = []
+    for name, screening_ok in _tabular_names():
+        cv_rows = (scan_results or {}).get(name)
+        params = (cv_rows or [{}])[0].get("params", {})
+        t0 = time.time()
+        est = _make_tabular(task, name, params)
+        if est is None:
+            continue
+        est.fit(Xtr, ytr)
+        records.append(_eval_record(est, name, task, Xva, yva, Xte, yte,
+                                    t0, screening_ok, cv=cv_rows))
+    return records
+
+
+def leaderboard_df(records, task):
+    """Flatten records into the comparison CSV rows (no sklearn objects)."""
+    rows = []
+    for r in records:
+        v, t = r["val"], r["test"]
+        row = {"model": r["model"], "train_time_s": r["train_time_s"],
+               "used_in_screening_ensemble": r["screening_ok"]}
+        cvb = r.get("cv_best") or {}
+        if cvb:
+            row["cv_mean"] = round(float(cvb["mean"]), 4)
+            row["cv_std"] = round(float(cvb["std"]), 4)
+            row["cv_best_params"] = json.dumps(cvb["params"])
+        else:
+            row["cv_mean"] = np.nan
+            row["cv_std"] = np.nan
+            row["cv_best_params"] = ""
+        if task == "regression":
+            row.update(val_rmse=v.get("rmse", float("nan")),
+                       val_r2=v.get("r2", float("nan")),
+                       test_rmse=t.get("rmse", float("nan")),
+                       test_mae=t.get("mae", float("nan")),
+                       test_r2=t.get("r2", float("nan")))
+        else:
+            row.update(val_auc_roc=v.get("auc_roc", float("nan")),
+                       val_auc_pr=v.get("auc_pr", float("nan")),
+                       test_auc_roc=t.get("auc_roc", float("nan")),
+                       test_auc_pr=t.get("auc_pr", float("nan")),
+                       test_balanced_accuracy=t.get("balanced_accuracy",
+                                                    float("nan")))
+        rows.append(row)
+    df = pd.DataFrame(rows)
+    df = df.sort_values(
+        "test_rmse" if task == "regression" else "test_auc_roc",
+        ascending=(task == "regression"))
+    return df.reset_index(drop=True)
+
+
+def save_and_print_leaderboards(reg_records, clf_records):
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    for task, records, fname in (
+            ("regression", reg_records, "model_comparison_regression.csv"),
+            ("classification", clf_records, "model_comparison_classification.csv")):
+        d = leaderboard_df(records, task)
+        d["train_time_s"] = d["train_time_s"].round(1)
+        for c in d.columns:
+            if c not in ("model", "train_time_s", "used_in_screening_ensemble",
+                         "cv_best_params"):
+                d[c] = d[c].astype(float).round(4)
+        d.to_csv(OUT_DIR / fname, index=False)
+        print(f"\n===== {task.upper()} MODEL LEADERBOARD "
+              f"(sorted by {'test_rmse' if task == 'regression' else 'test_auc_roc'}) =====")
+        print(d.to_string(index=False))
+
+
 if TORCH_OK:
 
     class TorchMultitaskNet(nn.Module):
@@ -441,11 +542,15 @@ def devices_report():
     return {"cuda": False, "n_gpu": 0, "device": "cpu", "mode": "CPU"}
 
 
-def train_torch_multitask(Xtr, ytr_reg, ytr_clf, epochs=None):
+def train_torch_multitask(Xtr, ytr_reg, ytr_clf, epochs=None, params=None):
+    params = params or {}
+    hidden = int(params.get("hidden", 256))
+    lr = float(params.get("lr", 1e-3))
     info = devices_report()
     dev = info["device"]
-    epochs = epochs or int(os.environ.get("MDM2_PART21_EPOCHS", "150"))
-    net = TorchMultitaskNet(Xtr.shape[1])
+    epochs = epochs if epochs is not None else int(
+        os.environ.get("MDM2_PART21_EPOCHS", "150"))
+    net = TorchMultitaskNet(Xtr.shape[1], hidden=hidden)
     if info["n_gpu"] >= 2:
         net = nn.DataParallel(net)
         print(f"[torch] DataParallel engaged on {info['n_gpu']} GPUs")
@@ -456,7 +561,7 @@ def train_torch_multitask(Xtr, ytr_reg, ytr_clf, epochs=None):
         torch.tensor(ytr_clf.astype(float), dtype=torch.float32),
     )
     loader = torch.utils.data.DataLoader(ds, batch_size=64, shuffle=True)
-    opt = torch.optim.Adam(net.parameters(), lr=1e-3, weight_decay=1e-5)
+    opt = torch.optim.Adam(net.parameters(), lr=lr, weight_decay=1e-5)
     mse, bce = nn.MSELoss(), nn.BCEWithLogitsLoss()
     net.train()
     for ep in range(epochs):
@@ -482,79 +587,638 @@ def torch_predict(net, X):
     return pr.cpu().numpy(), torch.sigmoid(pc).cpu().numpy()
 
 
-# --- ChemBERTa large model (optional, two separate fine-tunes) ---------------
-def maybe_finetune_chemberta(df: pd.DataFrame):
-    """SEPARATE regression and classification fine-tunes (one model each).
-    Uses nn.DataParallel so both GPUs are engaged. Returns dict or None."""
-    if os.environ.get("MDM2_PART21_SKIP_CHEMBERTA", "0") == "1":
-        REPORT["large_model"] = {"status": "skipped-by-flag"}
-        return None
-    if SMOKE and os.environ.get("MDM2_PART21_USE_CHEMBERTA", "0") != "1":
-        REPORT["large_model"] = {"status": "skipped-smoke"}
-        print("[chemberta] skipped in SMOKE mode")
+# --- Graph deep-learning models: GIN + MPNN on RDKit molecular graphs --------
+GRAPH_ATOM_DIM = 5
+GRAPH_BOND_DIM = 3
+
+
+def mol_graph(smiles: str):
+    """RDKit molecule -> {x: node feats, ei: [src,dst] edges, ef: edge feats}."""
+    from rdkit import Chem
+    mol = Chem.MolFromSmiles(smiles)
+    if mol is None or mol.GetNumAtoms() == 0:
         return None
     try:
+        x = np.zeros((mol.GetNumAtoms(), GRAPH_ATOM_DIM), dtype=np.float32)
+        for a in mol.GetAtoms():
+            x[a.GetIdx()] = [a.GetAtomicNum() / 100.0, a.GetDegree() / 6.0,
+                             a.GetFormalCharge() / 4.0,
+                             1.0 if a.GetIsAromatic() else 0.0,
+                             1.0 if a.IsInRing() else 0.0]
+        src, dst, ef = [], [], []
+        for b in mol.GetBonds():
+            u, v = b.GetBeginAtomIdx(), b.GetEndAtomIdx()
+            f = [b.GetBondTypeAsDouble() / 3.0,
+                 1.0 if b.GetIsConjugated() else 0.0,
+                 1.0 if b.IsInRing() else 0.0]
+            src += [u, v]
+            dst += [v, u]
+            ef += [f, f]
+        ei = (np.stack([np.asarray(src, np.int64), np.asarray(dst, np.int64)], 1)
+              if src else np.zeros((0, 2), np.int64))
+        efa = (np.asarray(ef, np.float32) if ef
+               else np.zeros((0, GRAPH_BOND_DIM), np.float32))
+        return {"x": x, "ei": ei, "ef": efa}
+    except Exception:
+        return None
+
+
+def graphs_for(smiles_list, label=""):
+    gs, keep = [], []
+    for s in smiles_list:
+        g = mol_graph(s)
+        if g is None:
+            keep.append(False)
+        else:
+            keep.append(True)
+            gs.append(g)
+    if label:
+        print(f"[graph] {label}: {sum(keep)}/{len(smiles_list)} -> graphs")
+    return gs, np.array(keep, dtype=bool)
+
+
+def graph_collate(gs, device):
+    xs = np.vstack([g["x"] for g in gs])
+    ei_parts, ef_parts, bi = [], [], []
+    off, tot = 0, 0
+    for g in gs:
+        n = g["x"].shape[0]
+        ei_parts.append(g["ei"] + off)
+        ef_parts.append(g["ef"])
+        bi += [tot] * n
+        off += n
+        tot += 1
+    ei = (np.vstack(ei_parts) if ei_parts
+          else np.zeros((0, 2), np.int64))
+    ef = (np.vstack(ef_parts) if ef_parts
+          else np.zeros((0, GRAPH_BOND_DIM), np.float32))
+    return (torch.tensor(xs).to(device),
+            torch.tensor(ei, dtype=torch.long).to(device),
+            torch.tensor(ef).to(device),
+            torch.tensor(bi, dtype=torch.long).to(device), off)
+
+
+def _scatter_sum(msgs, dst_idx, n_nodes, dim):
+    out = torch.zeros(n_nodes, dim, device=msgs.device, dtype=msgs.dtype)
+    return out.index_add_(0, dst_idx, msgs)
+
+
+if TORCH_OK:
+
+    class GINConv(nn.Module):
+        """Graph Isomorphism Network layer (sum-aggregated MLP update)."""
+
+        def __init__(self, d_in, d_out):
+            super().__init__()
+            self.mlp = nn.Sequential(nn.Linear(d_in, d_out), nn.ReLU(),
+                                     nn.Linear(d_out, d_out))
+
+        def forward(self, x, ei, n_nodes):
+            if ei.shape[0] == 0:                     # no bonds in batch
+                agg = torch.zeros(n_nodes, x.shape[1], device=x.device)
+            else:
+                src, dst = ei[:, 0], ei[:, 1]
+                agg = _scatter_sum(x[src], dst, n_nodes, x.shape[1])
+            return torch.relu(self.mlp(x + agg))
+
+    class MPNNConv(nn.Module):
+        """Message-passing layer with an edge-conditioned message network."""
+
+        def __init__(self, d_in, d_edge, d_out):
+            super().__init__()
+            self.msg = nn.Sequential(nn.Linear(2 * d_in + d_edge, d_out),
+                                     nn.ReLU(), nn.Linear(d_out, d_out))
+            self.upd = nn.Sequential(nn.Linear(d_in + d_out, d_out), nn.ReLU())
+            self.d_out = d_out
+
+        def forward(self, x, ei, ef, n_nodes):
+            if ei.shape[0] == 0:                     # no bonds in batch
+                agg = torch.zeros(n_nodes, self.d_out, device=x.device)
+            else:
+                src, dst = ei[:, 0], ei[:, 1]
+                m = self.msg(torch.cat([x[src], x[dst], ef], dim=1))
+                agg = _scatter_sum(m, dst, n_nodes, m.shape[1])
+            return self.upd(torch.cat([x, agg], dim=1))
+
+    class GraphTaskNet(nn.Module):
+        """Shared message-passing trunk + two heads (regression, classification)."""
+
+        def __init__(self, kind, n_layers=3, hidden=128):
+            super().__init__()
+            self.kind = kind
+            d, convs = GRAPH_ATOM_DIM, []
+            for _ in range(n_layers):
+                if kind == "gin":
+                    convs.append(GINConv(d, hidden))
+                else:
+                    convs.append(MPNNConv(d, GRAPH_BOND_DIM, hidden))
+                d = hidden
+            self.convs = nn.ModuleList(convs)
+            self.head_reg = nn.Linear(hidden, 1)
+            self.head_clf = nn.Linear(hidden, 1)
+
+        def forward(self, x, ei, ef, bi, n_nodes):
+            for c in self.convs:
+                if self.kind == "gin":
+                    x = c(x, ei, n_nodes)
+                else:
+                    x = c(x, ei, ef, n_nodes)
+            g = int(bi.max().item()) + 1
+            pooled = _scatter_sum(x, bi, g, x.shape[1])
+            cnt = torch.zeros(g, 1, device=x.device).index_add_(
+                0, bi, torch.ones(len(bi), 1, device=x.device))
+            h = pooled / cnt.clamp(min=1)
+            return self.head_reg(h).squeeze(-1), self.head_clf(h).squeeze(-1)
+
+
+def train_graph_net(kind, tr_gs, ytr_r, ytr_c, epochs=None, params=None):
+    params = params or {}
+    hidden = int(params.get("hidden", 128))
+    n_layers = int(params.get("n_layers", 3))
+    lr = float(params.get("lr", 1e-3))
+    info = devices_report()
+    dev = info["device"]
+    if info["n_gpu"] >= 2:
+        print(f"[graph:{kind}] graph batches run on {dev} "
+              f"(transformers use all {info['n_gpu']} GPUs via DataParallel)")
+    epochs = epochs if epochs is not None else int(
+        os.environ.get("MDM2_PART21_GNN_EPOCHS", "60"))
+    gnet = GraphTaskNet(kind, n_layers=n_layers, hidden=hidden).to(dev)
+    opt = torch.optim.Adam(gnet.parameters(), lr=lr, weight_decay=1e-5)
+    mse, bce = nn.MSELoss(), nn.BCEWithLogitsLoss()
+    n = len(tr_gs)
+    order = np.arange(n)
+    gnet.train()
+    for ep in range(epochs):
+        np.random.shuffle(order)
+        tot = 0.0
+        for s in range(0, n, 64):
+            x, ei, ef, bi, nn_ = graph_collate([tr_gs[i] for i in order[s:s + 64]], dev)
+            opt.zero_grad()
+            pr, pc = gnet(x, ei, ef, bi, nn_)
+            loss = mse(pr, torch.tensor(ytr_r[order[s:s + 64]]).to(dev)) + \
+                bce(pc, torch.tensor(ytr_c[order[s:s + 64]].astype(float)).to(dev))
+            loss.backward()
+            opt.step()
+            tot += float(loss.detach())
+        if (ep + 1) % 15 == 0 or ep == epochs - 1:
+            print(f"[graph:{kind}] epoch {ep + 1}/{epochs} joint_loss={tot:.4f}")
+    gnet.eval()
+    return gnet
+
+
+def graph_predict(gnet, gs, bs=256):
+    if not gs:
+        return np.zeros(0), np.zeros(0)
+    dev = next(gnet.parameters()).device
+    gnet.eval()
+    rs, ps = [], []
+    with torch.no_grad():
+        for i in range(0, len(gs), bs):
+            x, ei, ef, bi, nn_ = graph_collate(gs[i:i + bs], dev)
+            pr, pc = gnet(x, ei, ef, bi, nn_)
+            rs.append(pr.cpu().numpy())
+            ps.append(torch.sigmoid(pc).cpu().numpy())
+    return np.concatenate(rs), np.concatenate(ps)
+
+
+def train_graph_nets(df, idx_tr, idx_va, idx_te, ytr_r, ytr_c, yva_r, yva_c,
+                     yte_r, yte_c, params_by_kind=None):
+    """Train GIN and MPNN with joint regression+classification objectives."""
+    out = {}
+    if not TORCH_OK:
+        return out
+    tr_smi = df.loc[idx_tr, "smiles"].tolist()
+    va_smi = df.loc[idx_va, "smiles"].tolist()
+    te_smi = df.loc[idx_te, "smiles"].tolist()
+    for kind in ("gin", "mpnn"):
+        t0 = time.time()
+        tr_gs, tr_k = graphs_for(tr_smi, f"train-{kind}")
+        va_gs, va_k = graphs_for(va_smi)
+        te_gs, te_k = graphs_for(te_smi)
+        gnet = train_graph_net(kind, tr_gs, ytr_r[tr_k], ytr_c[tr_k],
+                               params=(params_by_kind or {}).get(kind))
+        pr_va, pc_va = graph_predict(gnet, va_gs)
+        pr_te, pc_te = graph_predict(gnet, te_gs)
+        reg_v = regression_metrics(yva_r[va_k], pr_va)
+        reg_t = regression_metrics(yte_r[te_k], pr_te)
+        clf_v = classification_metrics(yva_c[va_k], pc_va)
+        clf_t = classification_metrics(yte_c[te_k], pc_te)
+        print(f"[graph:{kind}] reg test rmse={reg_t['rmse']:.3f} "
+              f"r2={reg_t['r2']:+.3f} | clf test auc={clf_t['auc_roc']:.3f} "
+              f"bal_acc={clf_t['balanced_accuracy']:.3f}")
+        out[kind] = {"net": gnet, "reg_val": reg_v, "reg_test": reg_t,
+                     "clf_val": clf_v, "clf_test": clf_t,
+                     "train_time_s": round(time.time() - t0, 1)}
+    return out
+
+
+# --- 5-fold scaffold-CV hyperparameter scan ----------------------------------
+N_FOLDS = 5
+
+
+def scaffold_folds(keys_subset, n_folds=N_FOLDS, seed=SEED):
+    """Deterministic scaffold-grouped K folds (a scaffold never spans folds)."""
+    uniq = sorted(set(keys_subset))
+    perm = np.random.RandomState(seed).permutation(len(uniq))
+    fold_of = {uniq[i]: r % n_folds for r, i in enumerate(perm)}
+    folds = []
+    for f in range(n_folds):
+        va_f = [i for i, k in enumerate(keys_subset) if fold_of[k] == f]
+        tr_f = [i for i, k in enumerate(keys_subset) if fold_of[k] != f]
+        folds.append((np.asarray(tr_f, dtype=int), np.asarray(va_f, dtype=int)))
+    return folds
+
+
+_LGBM = 0            # 0 = not tried; False = unavailable; module = available
+
+
+def _try_lightgbm():
+    global _LGBM
+    if _LGBM != 0:
+        return _LGBM or None
+    try:
+        _LGBM = importlib.import_module("lightgbm")
+        return _LGBM
+    except Exception:
+        pass
+    try:
+        import subprocess
+        print("[lightgbm] missing; installing via pip (lightgbm) ...")
+        subprocess.run([sys.executable, "-m", "pip", "install", "-q", "lightgbm"],
+                       timeout=300)
+        _LGBM = importlib.import_module("lightgbm")
+        return _LGBM
+    except Exception as exc:
+        _LGBM = False
+        print(f"[lightgbm] unavailable -> {type(exc).__name__}: {exc} "
+              "(that model is skipped)")
+        return None
+
+
+def _tabular_names():
+    """(name, screening_ok) for every tabular competitor."""
+    return [("xgboost", True), ("random_forest", True), ("extra_trees", True),
+            ("lightgbm", True), ("sklearn_hist_gb", True), ("svm", False)]
+
+
+def _make_tabular(task, name, params=None):
+    """One estimator for ONE tabular model + task, with optional param override."""
+    params = dict(params or {})
+    import xgboost as xgb
+    from sklearn.ensemble import (ExtraTreesClassifier, ExtraTreesRegressor,
+                                  HistGradientBoostingClassifier,
+                                  HistGradientBoostingRegressor,
+                                  RandomForestClassifier, RandomForestRegressor)
+    from sklearn.svm import SVC, SVR
+    is_reg = task == "regression"
+    if name == "xgboost":
+        kw = dict(n_estimators=400, max_depth=6, learning_rate=0.06,
+                  subsample=0.9, colsample_bytree=0.9, random_state=SEED,
+                  tree_method="hist", n_jobs=4)
+        if not is_reg:
+            kw["eval_metric"] = "logloss"
+        kw.update(params)
+        return (xgb.XGBRegressor if is_reg else xgb.XGBClassifier)(**kw)
+    if name == "random_forest":
+        kw = dict(n_estimators=500, random_state=SEED, n_jobs=4)
+        kw.update(params)
+        return (RandomForestRegressor if is_reg else RandomForestClassifier)(**kw)
+    if name == "extra_trees":
+        kw = dict(n_estimators=500, random_state=SEED, n_jobs=4)
+        kw.update(params)
+        return (ExtraTreesRegressor if is_reg else ExtraTreesClassifier)(**kw)
+    if name == "lightgbm":
+        lg = _try_lightgbm()
+        if lg is None:
+            return None
+        kw = dict(n_estimators=500, learning_rate=0.05, subsample=0.9,
+                  colsample_bytree=0.9, random_state=SEED, verbosity=-1, n_jobs=4)
+        kw.update(params)
+        return (lg.LGBMRegressor if is_reg else lg.LGBMClassifier)(**kw)
+    if name == "sklearn_hist_gb":
+        kw = dict(max_iter=400, random_state=SEED)
+        kw.update(params)
+        return (HistGradientBoostingRegressor if is_reg
+                else HistGradientBoostingClassifier)(**kw)
+    if name == "svm":
+        if is_reg:
+            return SVR(**{"C": 10.0, "gamma": "scale", **params})
+        return SVC(**{"C": 10.0, "gamma": "scale", "probability": True, **params})
+    raise ValueError(f"unknown tabular model {name!r}")
+
+
+SCAN_GRIDS = {
+    "xgboost": [dict(n_estimators=n, max_depth=d, learning_rate=l)
+                for n in (200, 400) for d in (4, 6) for l in (0.05, 0.10)],
+    "random_forest": [dict(n_estimators=n, max_depth=d)
+                      for n in (300, 600) for d in (None, 12)],
+    "extra_trees": [dict(n_estimators=n, max_depth=d)
+                    for n in (300, 600) for d in (None, 16)],
+    "lightgbm": [dict(num_leaves=n, learning_rate=l)
+                 for n in (31, 63) for l in (0.05, 0.10)],
+    "sklearn_hist_gb": [dict(max_iter=n, learning_rate=l)
+                        for n in (200, 400) for l in (0.05, 0.10)],
+    "svm": [dict(C=c) for c in (1.0, 10.0)],
+}
+
+
+def cv_scan_tabular(task, Xc, y, folds):
+    out = {}
+    for name, _ok in _tabular_names():
+        if name == "lightgbm" and _try_lightgbm() is None:
+            continue
+        rows = []
+        for params in SCAN_GRIDS[name]:
+            scores = []
+            for tr_f, va_f in folds:
+                est = _make_tabular(task, name, params)
+                est.fit(Xc[tr_f], y[tr_f])
+                if task == "regression":
+                    scores.append(regression_metrics(
+                        y[va_f], est.predict(Xc[va_f]))["rmse"])
+                else:
+                    scores.append(classification_metrics(
+                        y[va_f], est.predict_proba(Xc[va_f])[:, 1])["auc_roc"])
+            rows.append({"params": params,
+                         "metric": "rmse" if task == "regression" else "auc_roc",
+                         "fold_scores": [round(float(s), 4) for s in scores],
+                         "mean": float(np.mean(scores)),
+                         "std": float(np.std(scores))})
+        rows.sort(key=lambda r: r["mean"], reverse=(task == "classification"))
+        out[name] = rows
+        b = rows[0]
+        print(f"[cv-scan:{task}] {name:<16} best={b['params']} "
+              f"{b['metric']}={b['mean']:.4f}±{b['std']:.4f} ({len(folds)} folds)")
+    return out
+
+
+def cv_scan_deep(task, Xc, y_r, y_c, folds, gs_all, scan_ep):
+    """5-fold CV scan of the joint two-head DL models (multitask net, GIN,
+    MPNN). Each candidate trains jointly (both heads) and is scored on the
+    task metric over the fold-validation molecules."""
+    out = {}
+    # multitask net (feature-based)
+    rows = []
+    for hidden in (128, 256):
+        for lr in (1e-3, 3e-4):
+            scores = []
+            for tr_f, va_f in folds:
+                net_f = train_torch_multitask(
+                    Xc[tr_f], y_r[tr_f], y_c[tr_f], epochs=scan_ep,
+                    params={"hidden": hidden, "lr": lr})
+                pr_f, pc_f = torch_predict(net_f, Xc[va_f])
+                scores.append(
+                    regression_metrics(y_r[va_f], pr_f)["rmse"]
+                    if task == "regression" else
+                    classification_metrics(y_c[va_f], pc_f)["auc_roc"])
+            rows.append({"params": {"hidden": hidden, "lr": lr},
+                         "metric": "rmse" if task == "regression" else "auc_roc",
+                         "fold_scores": [round(float(s), 4) for s in scores],
+                         "mean": float(np.mean(scores)),
+                         "std": float(np.std(scores))})
+    rows.sort(key=lambda r: r["mean"], reverse=(task == "classification"))
+    out["multitask_net"] = rows
+    print(f"[cv-scan:{task}] {'multitask_net':<16} best={rows[0]['params']} "
+          f"{rows[0]['metric']}={rows[0]['mean']:.4f}±{rows[0]['std']:.4f}")
+
+    # GIN / MPNN (graph-based)
+    for kind in ("gin", "mpnn"):
+        rows = []
+        for hidden in (64, 128):
+            for n_layers in (2, 3):
+                for lr in (1e-3, 3e-4):
+                    scores = []
+                    for tr_f, va_f in folds:
+                        gnet = train_graph_net(
+                            kind, [gs_all[i] for i in tr_f],
+                            y_r[tr_f], y_c[tr_f], epochs=scan_ep,
+                            params={"hidden": hidden, "n_layers": n_layers,
+                                    "lr": lr})
+                        pr_f, pc_f = graph_predict(
+                            gnet, [gs_all[i] for i in va_f])
+                        scores.append(
+                            regression_metrics(y_r[va_f], pr_f)["rmse"]
+                            if task == "regression" else
+                            classification_metrics(y_c[va_f], pc_f)["auc_roc"])
+                    rows.append({"params": {"hidden": hidden,
+                                            "n_layers": n_layers, "lr": lr},
+                                 "metric": "rmse" if task == "regression"
+                                 else "auc_roc",
+                                 "fold_scores": [round(float(s), 4)
+                                                 for s in scores],
+                                 "mean": float(np.mean(scores)),
+                                 "std": float(np.std(scores))})
+        rows.sort(key=lambda r: r["mean"], reverse=(task == "classification"))
+        out[kind] = rows
+        print(f"[cv-scan:{task}] {kind:<16} best={rows[0]['params']} "
+              f"{rows[0]['metric']}={rows[0]['mean']:.4f}±{rows[0]['std']:.4f}")
+    return out
+
+
+def _finetune_hf_once(tok, auto_cls, name, kw, texts, ys_reg, ys_clf,
+                      epochs, lr, info):
+    """One HF fine-tune pass: regression head + classification head (separate
+    models). Returns {task: model}. Works with DataParallel on 2 GPUs."""
+    enc = tok(texts, truncation=True, max_length=192, padding=True,
+              return_tensors="pt")
+    bs = 16 if info["cuda"] else 32
+    mods = {}
+    for task, labels in (("regression",
+                          torch.tensor(np.asarray(ys_reg), dtype=torch.float32)),
+                         ("classification",
+                          torch.tensor(np.asarray(ys_clf), dtype=torch.long))):
+        num_labels = 1 if task == "regression" else 2
+        mdl = _hf_load(auto_cls, name, kw, num_labels=num_labels)
+        if info["n_gpu"] >= 2:
+            mdl = nn.DataParallel(mdl)
+        mdl.to(info["device"])
+        opt = torch.optim.AdamW(mdl.parameters(), lr=lr)
+        dl = torch.utils.data.DataLoader(
+            torch.utils.data.TensorDataset(
+                enc["input_ids"], enc["attention_mask"], labels),
+            batch_size=bs, shuffle=True)
+        lossf = nn.MSELoss() if task == "regression" else nn.CrossEntropyLoss()
+        mdl.train()
+        for ep in range(epochs):
+            run = 0.0
+            for ids, mask, yy in dl:
+                ids, mask, yy = (t.to(info["device"]) for t in (ids, mask, yy))
+                opt.zero_grad()
+                logits = mdl(input_ids=ids, attention_mask=mask).logits
+                if task == "regression":
+                    loss = lossf(logits.view(-1), yy.view(-1))
+                else:
+                    loss = lossf(logits, yy.view(-1))
+                loss.backward()
+                opt.step()
+                run += float(loss.detach())
+            if epochs >= 3:
+                print(f"[large-models] {name.split('/')[-1]} {task} "
+                      f"epoch {ep + 1}/{epochs} loss={run:.4f}")
+        mods[task] = mdl
+    return mods
+
+
+def _large_cv_best_lr(tok, auto_cls, name, kw, texts, ys_r, ys_c, folds, info):
+    """Optional LR mini-scan for large models (5 folds x lr grid, 2 epochs)."""
+    scores_by_lr = {}
+    for lr in (1e-5, 2e-5):
+        scores = []
+        for tr_f, va_f in folds:
+            mods = _finetune_hf_once(tok, auto_cls, name, kw,
+                                     [texts[i] for i in tr_f],
+                                     ys_r[tr_f], ys_c[tr_f], epochs=2, lr=lr,
+                                     info=info)
+            auc = classification_metrics(
+                ys_c[va_f],
+                _hf_predict(mods["classification"], tok,
+                            [texts[i] for i in va_f], "classification"))["auc_roc"]
+            scores.append(float(auc))
+        scores_by_lr[lr] = scores
+    best_lr = max(scores_by_lr, key=lambda l: float(np.mean(scores_by_lr[l])))
+    return {"best_lr": best_lr,
+            "fold_scores": {str(k): [round(x, 4) for x in v]
+                            for k, v in scores_by_lr.items()},
+            "mean": float(np.mean(scores_by_lr[best_lr]))}
+
+
+# --- Deep-learning large models (pretrained chemistry transformers, 2 GPUs) --
+LARGE_MODELS = [
+    ("seyonec/ChemBERTa-zinc-base-v1", {}),
+    ("DeepChem/ChemBERTa-77M-MLM", {}),
+    ("ibm-research/MoLFormer-XL-both-10pct", {"trust_remote_code": True}),
+]
+
+
+def _hf_load(AutoCls, name, kw, **extra):
+    try:
+        return AutoCls.from_pretrained(name, **kw, **extra)
+    except Exception:
+        return AutoCls.from_pretrained(name, trust_remote_code=True, **extra)
+
+
+def _hf_predict(model, tok, texts, task, max_length=192, bs=64):
+    """Batched inference. Returns (reg_preds) or (prob_active) array."""
+    out = []
+    model.eval()
+    with torch.no_grad():
+        for i in range(0, len(texts), bs):
+            enc = tok(texts[i:i + bs], truncation=True, max_length=max_length,
+                      padding=True, return_tensors="pt")
+            enc = {k: v.to(next(model.parameters()).device) for k, v in enc.items()}
+            logits = model(**enc).logits
+            if task == "regression":
+                out.append(logits.view(-1).cpu().numpy())
+            else:
+                out.append(logits.softmax(-1)[:, 1].cpu().numpy())
+    return np.concatenate(out) if out else np.zeros(0)
+
+
+def maybe_finetune_large_models(df_tr, va_texts, yva_r, yva_c,
+                                te_texts, yte_r, yte_c):
+    """DEEP LEARNING SUITE: fine-tune SEVERAL pretrained chemistry transformers,
+    each with TWO separate heads (regression on pIC50; classification on
+    Active/Inactive), DataParallel across both Kaggle GPUs, each evaluated on
+    the held-out test scaffold set. Optionally scores the screening library so
+    the large models join the top-50 ensemble
+    (MDM2_PART21_SCREEN_LARGE_MODELS=1). Returns {"records", "scorers"}."""
+    result = {"records": [], "scorers": []}
+    if os.environ.get("MDM2_PART21_SKIP_CHEMBERTA", "0") == "1":
+        REPORT["large_models_status"] = "skipped-by-flag"
+        print("[large-models] skipped by flag")
+        return result
+    if SMOKE and os.environ.get("MDM2_PART21_USE_CHEMBERTA", "0") != "1":
+        REPORT["large_models_status"] = "skipped-smoke"
+        print("[large-models] skipped in SMOKE mode")
+        return result
+    try:
+        import transformers
         from transformers import AutoModelForSequenceClassification, AutoTokenizer
     except Exception as exc:
-        REPORT["large_model"] = {"status": "not-available",
-                                 "reason": f"{type(exc).__name__}: {exc}"}
-        print("[chemberta] transformers not available ->", exc)
-        return None
-    info = devices_report()
-    model_name = "seyonec/ChemBERTa-zinc-base-v1"
-    out = {}
-    try:
-        tok = AutoTokenizer.from_pretrained(model_name)
-        enc = tok(df["smiles"].tolist(), truncation=True, max_length=192,
-                  padding=True, return_tensors="pt")
-        ys_reg = torch.tensor(df["pIC50"].values, dtype=torch.float32)
-        ys_clf = torch.tensor(df["activity"].values, dtype=torch.long)
-        bs = 16 if info["cuda"] else 32
+        REPORT["large_models_status"] = "not-available"
+        REPORT["large_models"] = [{"status": "not-available",
+                                   "reason": f"{type(exc).__name__}: {exc}"}]
+        print("[large-models] transformers not available ->", exc)
+        return result
 
-        for task, labels in (("regression", ys_reg), ("classification", ys_clf)):
-            num_labels = 1 if task == "regression" else 2
-            mdl = AutoModelForSequenceClassification.from_pretrained(
-                model_name, num_labels=num_labels)
-            if info["n_gpu"] >= 2:
-                mdl = nn.DataParallel(mdl)
-                print(f"[chemberta] {task}: DataParallel on {info['n_gpu']} GPUs")
-            mdl.to(info["device"])
-            opt = torch.optim.AdamW(mdl.parameters(), lr=2e-5)
-            dl = torch.utils.data.DataLoader(
-                torch.utils.data.TensorDataset(enc["input_ids"], enc["attention_mask"],
-                                               labels),
-                batch_size=bs, shuffle=True)
-            lossf = nn.MSELoss() if task == "regression" else nn.CrossEntropyLoss()
-            mdl.train()
-            for ep in range(3):
-                run = 0.0
-                for ids, mask, yy in dl:
-                    ids, mask, yy = ids.to(info["device"]), mask.to(info["device"]), \
-                        yy.to(info["device"])
-                    opt.zero_grad()
-                    if task == "regression":
-                        logits = mdl(input_ids=ids, attention_mask=mask).logits.squeeze(-1)
-                        loss = lossf(logits, yy.view(-1))
-                    else:
-                        logits = mdl(input_ids=ids, attention_mask=mask).logits
-                        loss = lossf(logits, yy.view(-1))
-                    loss.backward()
-                    opt.step()
-                    run += float(loss.detach())
-                print(f"[chemberta] {task} epoch {ep + 1}/3 loss={run:.4f}")
-            core = mdl.module if isinstance(mdl, nn.DataParallel) else mdl
-            torch.save(core.state_dict(), OUT_DIR / f"chemberta_{task}.pt")
-            mdl.eval()
-            out[task] = "trained"
-        REPORT["large_model"] = {"status": "fine-tuned", "model": model_name,
-                                 "tasks": out, "gpus": info["mode"]}
-        return out
-    except Exception as exc:
-        REPORT["large_model"] = {"status": "failed",
-                                 "reason": f"{type(exc).__name__}: {exc}",
-                                 "note": "pipeline continues without it"}
-        print("[chemberta] fine-tune failed ->", exc)
-        return None
+    info = devices_report()
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    bs = 16 if info["cuda"] else 32
+    for name, kw in LARGE_MODELS:
+        rec = {"model": name}
+        rec_t0 = time.time()
+        try:
+            tok = _hf_load(AutoTokenizer, name, kw)
+            ys_r = df_tr["pIC50"].values.astype(np.float32)
+            ys_c = df_tr["activity"].values.astype(np.int64)
+
+            # optional 5-fold LR scan for this large model (selection on
+            # train-fold scaffolds only; final fit then uses the best LR)
+            cv_info = None
+            final_lr = 2e-5
+            if (not SMOKE
+                    and os.environ.get("MDM2_PART21_SKIP_LARGE_CV", "0") != "1"):
+                cv_folds_l = scaffold_folds(
+                    [scaffold_key(s) for s in df_tr["smiles"]])
+                cv_info = _large_cv_best_lr(
+                    tok, AutoModelForSequenceClassification, name, kw,
+                    df_tr["smiles"].tolist(), ys_r, ys_c, cv_folds_l, info)
+                final_lr = cv_info["best_lr"]
+                rec["cv"] = cv_info
+                print(f"[large-models] {name.split('/')[-1]} 5-fold LR scan -> "
+                      f"best_lr={final_lr} (cv auc={cv_info['mean']:.4f})")
+
+            models = _finetune_hf_once(
+                tok, AutoModelForSequenceClassification, name, kw,
+                df_tr["smiles"].tolist(), ys_r, ys_c, epochs=3, lr=final_lr,
+                info=info)
+            for task in ("regression", "classification"):
+                torch.save(
+                    (models[task].module
+                     if isinstance(models[task], nn.DataParallel)
+                     else models[task]).state_dict(),
+                    OUT_DIR / f"dl_{re.sub(chr(92) + 'W+', '_', name)}_{task}.pt")
+
+            te_r = _hf_predict(models["regression"], tok, te_texts, "regression")
+            te_p = _hf_predict(models["classification"], tok, te_texts,
+                               "classification")
+            va_r = _hf_predict(models["regression"], tok, va_texts, "regression")
+            va_p = _hf_predict(models["classification"], tok, va_texts,
+                               "classification")
+            rec["regression_val"] = regression_metrics(yva_r, va_r)
+            rec["classification_val"] = classification_metrics(yva_c, va_p)
+            rec["regression_test"] = regression_metrics(yte_r, te_r)
+            rec["classification_test"] = classification_metrics(yte_c, te_p)
+            rec["status"] = "fine-tuned"
+            rec["gpus"] = info["mode"]
+            rec["train_time_s"] = round(time.time() - rec_t0, 1)
+            print(f"[large-models] {name.split('/')[-1]}  reg test: "
+                  f"rmse={rec['regression_test']['rmse']:.3f} "
+                  f"r2={rec['regression_test']['r2']:+.3f} | clf test: "
+                  f"auc={rec['classification_test']['auc_roc']:.3f} "
+                  f"bal_acc={rec['classification_test']['balanced_accuracy']:.3f}")
+
+            if os.environ.get("MDM2_PART21_SCREEN_LARGE_MODELS", "0") == "1":
+                def _scorer(_r=models["regression"], _c=models["classification"],
+                            _t=tok):
+                    def scorer(texts):
+                        return (_hf_predict(_r, _t, texts, "regression"),
+                                _hf_predict(_c, _t, texts, "classification"))
+                    return scorer
+                result["scorers"].append((name, _scorer()))
+            result["records"].append(rec)
+        except Exception as exc:
+            rec["status"] = "failed"
+            rec["reason"] = f"{type(exc).__name__}: {exc}"
+            print(f"[large-models] {name.split('/')[-1]} FAILED -> {exc}")
+            result["records"].append(rec)
+
+    fine = [r for r in result["records"] if r.get("status") == "fine-tuned"]
+    REPORT["large_models"] = result["records"]
+    REPORT["large_models_status"] = (
+        f"fine-tuned {len(fine)}/{len(LARGE_MODELS)}" if fine else "failed")
+    return result
 
 
 # -----------------------------------------------------------------------------
@@ -687,6 +1351,37 @@ def finalize_report(elapsed, metrics):
                                          ("top50_regression.csv",
                                           "top50_classification.csv")) else "FAIL",
           files=["top50_regression.csv", "top50_classification.csv"])
+    for f in ("model_comparison_regression.csv", "model_comparison_classification.csv",
+              "screening_scores_all_models.csv"):
+        check(f"output_{f}", "PASS" if (OUT_DIR / f).is_file() else "FAIL",
+              exists=(OUT_DIR / f).is_file())
+    lm = REPORT.get("large_models", [])
+    lm_ok = [r for r in lm if r.get("status") == "fine-tuned"]
+    lm_failed = [r for r in lm if r.get("status") == "failed"]
+    check("large_model_suite",
+          "PASS" if lm_ok else ("WARN" if lm_failed else "SKIPPED-TRANSFORMERS"),
+          suite_status=REPORT.get("large_models_status", ""),
+          models=[r.get("model") for r in lm])
+    # 5-fold CV hyperparameter scan artifacts
+    if REPORT.get("cv_scan"):
+        cvj = {"n_folds": REPORT["cv_scan"].get("n_folds"),
+               "scan_epochs": REPORT["cv_scan"].get("scan_epochs"),
+               "tabular": REPORT["cv_scan"].get("tabular", {}),
+               "deep": REPORT["cv_scan"].get("deep", {}),
+               "large": {r.get("model", "?"): r.get("cv")
+                         for r in REPORT.get("large_models", [])}}
+        (OUT_DIR / "cv_scan_results.json").write_text(
+            json.dumps(cvj, indent=2, default=str))
+        n_scanned = sum(len(v) for t in ("regression", "classification")
+                        for v in REPORT["cv_scan"].get("tabular", {}).get(t, {}).values())
+        check("cv_scan_completed", "PASS" if n_scanned else "SKIPPED-SMOKE",
+              n_folds=REPORT["cv_scan"].get("n_folds"),
+              combos_scanned_per_task=n_scanned)
+    else:
+        check("cv_scan_completed", "SKIPPED-SMOKE", note="scan disabled by flag")
+    check("output_cv_scan_results.json",
+          "PASS" if (OUT_DIR / "cv_scan_results.json").is_file() else "FAIL",
+          exists=(OUT_DIR / "cv_scan_results.json").is_file())
     REPORT["final"] = metrics
     (OUT_DIR / "verification_report.json").write_text(json.dumps(REPORT, indent=2, default=str))
     check("verification_report_written", "PASS", path=_rel(OUT_DIR / "verification_report.json"))
@@ -695,7 +1390,8 @@ def finalize_report(elapsed, metrics):
     manifest = {"output_dir": _rel(OUT_DIR), "files": files,
                 "sha256": {_rel(OUT_DIR / f): _sha256(OUT_DIR / f) for f in files}}
     (OUT_DIR / "run_manifest.json").write_text(json.dumps(manifest, indent=2, default=str))
-    allowed = ("PASS", "SKIPPED-1GPU", "SKIPPED-CPU", "WARN")
+    allowed = ("PASS", "SKIPPED-1GPU", "SKIPPED-CPU", "SKIPPED-TRANSFORMERS",
+               "SKIPPED-SMOKE", "WARN")
     fails = [k for k, v in REPORT["checks"].items() if v["status"] not in allowed]
     print(f"\n[verify] OVERALL: {'PASS' if not fails else 'FAIL'} "
           f"(failed areas: {fails if fails else 'none'})")
@@ -749,33 +1445,124 @@ def run_pipeline():
     Xva, yva_r, yva_c = X[idx_va], yreg[idx_va], yclf[idx_va]
     Xte, yte_r, yte_c = X[idx_te], yreg[idx_te], yclf[idx_te]
 
-    # ---------------- regression -----------------------------------------
-    print("\n================ REGRESSION (pIC50) ================")
-    reg_model = train_xgb("regression", Xtr, ytr_r)
-    print("[regression] XGB  val :", regression_metrics(yva_r, reg_model.predict(Xva)))
-    reg_te_m = regression_metrics(yte_r, reg_model.predict(Xte))
-    print("[regression] XGB  test:", reg_te_m)
+    # ---------------- 5-fold CV hyperparameter scan (all models) ---------
+    scan, deep_scan, dl_best = {}, {}, {}
+    if os.environ.get("MDM2_PART21_SKIP_SCAN", "0") != "1":
+        scan_ep = int(os.environ.get("MDM2_PART21_SCAN_EPOCHS",
+                                     "3" if SMOKE else "40"))
+        idx_cvt = np.concatenate([idx_tr, idx_va]).astype(int)
+        y_r_all, y_c_all = yreg[idx_cvt], yclf[idx_cvt]
+        Xc = X[idx_cvt]
+        gs_all = None
+        if TORCH_OK:
+            gs_all, gk_all = graphs_for(df.loc[idx_cvt, "smiles"].tolist(),
+                                        "cv-graphs")
+            if not bool(gk_all.all()):
+                sel = np.where(gk_all)[0]
+                idx_cvt, y_r_all, y_c_all, Xc = (idx_cvt[sel], y_r_all[sel],
+                                                 y_c_all[sel], Xc[sel])
+                gs_all = [gs_all[i] for i in sel]
+        cv_keys = [scaffold_key(df["smiles"].iloc[i]) for i in idx_cvt]
+        cv_folds = scaffold_folds(cv_keys)
+        print(f"\n[cv] 5-fold scaffold-CV hyperparameter scan over "
+              f"{len(idx_cvt)} train+val molecules (test untouched), "
+              f"scan epochs={scan_ep}")
+        scan["regression"] = cv_scan_tabular("regression", Xc, y_r_all, cv_folds)
+        scan["classification"] = cv_scan_tabular("classification", Xc, y_c_all,
+                                                 cv_folds)
+        if TORCH_OK and gs_all:
+            deep_scan["regression"] = cv_scan_deep(
+                "regression", Xc, y_r_all, y_c_all, cv_folds, gs_all, scan_ep)
+            deep_scan["classification"] = cv_scan_deep(
+                "classification", Xc, y_r_all, y_c_all, cv_folds, gs_all, scan_ep)
+        # joint two-head DL models pick the classification-scan winner
+        if deep_scan:
+            dl_best = {kind: deep_scan["classification"][kind][0]["params"]
+                       for kind in deep_scan["classification"]}
+        REPORT["cv_scan"] = {"n_folds": len(cv_folds), "scan_epochs": scan_ep,
+                             "tabular": scan, "deep": deep_scan}
 
-    # ---------------- classification -------------------------------------
-    print("\n============ CLASSIFICATION (Active vs Inactive) ============")
-    clf_model = train_xgb("classification", Xtr, ytr_c)
-    clf_va_p = clf_model.predict_proba(Xva)[:, 1]
-    print("[classification] XGB  val :", classification_metrics(yva_c, clf_va_p))
-    clf_te_m = classification_metrics(yte_c, clf_model.predict_proba(Xte)[:, 1])
-    print("[classification] XGB  test:", clf_te_m)
+    # ---------------- tabular multi-model suite --------------------------
+    print("\n================ REGRESSION (pIC50) — multiple models ================")
+    reg_records = train_all_tabular("regression", Xtr, ytr_r, Xva, yva_r, Xte, yte_r,
+                                    scan_results=scan.get("regression"))
+    reg_model = next(r["_model"] for r in reg_records if r["model"] == "xgboost")
+
+    print("\n============ CLASSIFICATION (Active vs Inactive) — multiple models ============")
+    clf_records = train_all_tabular("classification", Xtr, ytr_c, Xva, yva_c, Xte, yte_c,
+                                    scan_results=scan.get("classification"))
+    clf_model = next(r["_model"] for r in clf_records if r["model"] == "xgboost")
 
     # ---------------- pytorch multitask network ---------------------------
     info = devices_report()
     print(f"\n[torch] device plan: {info['mode']}")
     if TORCH_OK:
-        net = train_torch_multitask(Xtr, ytr_r, ytr_c)
+        t0n = time.time()
+        net = train_torch_multitask(Xtr, ytr_r, ytr_c,
+                                    params=dl_best.get("multitask_net"))
+        pr_va, pc_va = torch_predict(net, Xva)
         pr_te, pc_te = torch_predict(net, Xte)
+        net_reg_v = regression_metrics(yva_r, pr_va)
         net_reg = regression_metrics(yte_r, pr_te)
+        net_clf_v = classification_metrics(yva_c, pc_va)
         net_clf = classification_metrics(yte_c, pc_te)
         print("[regression] multitask-net test:", net_reg)
         print("[classification] multitask-net test:", net_clf)
+        net_t = round(time.time() - t0n, 1)
+        nb = (deep_scan.get("classification", {}).get("multitask_net") or [None])[0]
+        reg_records.append({"model": "multitask_net", "_model": None,
+                            "val": net_reg_v, "test": net_reg,
+                            "train_time_s": net_t, "screening_ok": True,
+                            "cv_best": nb})
+        clf_records.append({"model": "multitask_net", "_model": None,
+                            "val": net_clf_v, "test": net_clf,
+                            "train_time_s": net_t, "screening_ok": True,
+                            "cv_best": nb})
     else:
         net, net_reg, net_clf = None, {}, {}
+        pr_s, pc_s = None, None
+
+    # ---------------- graph deep-learning: GIN + MPNN ---------------------
+    graph = train_graph_nets(df, idx_tr, idx_va, idx_te,
+                             ytr_r, ytr_c, yva_r, yva_c, yte_r, yte_c,
+                             params_by_kind={k: dl_best[k] for k in ("gin", "mpnn")}
+                             if dl_best else None)
+    for kind, m in graph.items():
+        gb = (deep_scan.get("classification", {}).get(kind) or [None])[0]
+        reg_records.append({"model": kind, "_model": None, "val": m["reg_val"],
+                            "test": m["reg_test"],
+                            "train_time_s": m["train_time_s"], "screening_ok": True,
+                            "cv_best": gb})
+        clf_records.append({"model": kind, "_model": None, "val": m["clf_val"],
+                            "test": m["clf_test"],
+                            "train_time_s": m["train_time_s"], "screening_ok": True,
+                            "cv_best": gb})
+
+    # ---------------- deep-learning large models (2 GPUs) ----------------
+    va_texts = df.loc[idx_va, "smiles"].tolist()
+    te_texts = df.loc[idx_te, "smiles"].tolist()
+    large = maybe_finetune_large_models(df.iloc[idx_tr].reset_index(drop=True),
+                                        va_texts, yva_r, yva_c,
+                                        te_texts, yte_r, yte_c)
+    large_screen_ok = (os.environ.get("MDM2_PART21_SCREEN_LARGE_MODELS", "0") == "1"
+                       and bool(large["scorers"]))
+    for rec in large["records"]:
+        if rec.get("status") != "fine-tuned":
+            continue
+        nm = f"hf:{rec['model'].split('/')[-1]}"
+        reg_records.append({"model": nm, "_model": None,
+                            "val": rec.get("regression_val", {}),
+                            "test": rec.get("regression_test", {}),
+                            "train_time_s": rec.get("train_time_s", 0.0),
+                            "screening_ok": large_screen_ok, "cv_best": rec.get("cv")})
+        clf_records.append({"model": nm, "_model": None,
+                            "val": rec.get("classification_val", {}),
+                            "test": rec.get("classification_test", {}),
+                            "train_time_s": rec.get("train_time_s", 0.0),
+                            "screening_ok": large_screen_ok, "cv_best": rec.get("cv")})
+
+    # all models trained -> one ranking table per task
+    save_and_print_leaderboards(reg_records, clf_records)
 
     # ---------------- screening ------------------------------------------
     print("\n[screen] screening the library (identifier + canonical_smiles only)")
@@ -784,14 +1571,50 @@ def run_pipeline():
     screen_kept = screen_raw.loc[keep_s].reset_index(drop=True)
     print(f"[screen] kept {len(screen_kept)}/{len(screen_raw)} screening molecules")
 
-    pred_reg_s = reg_model.predict(Xs)
-    clf_probs_s = clf_model.predict_proba(Xs)[:, 1]
+    # multi-model screening ensemble (every model that can score the library)
+    preds_r, probs_p = [], []
+    for r in reg_records:
+        if r["screening_ok"] and r["_model"] is not None:
+            preds_r.append(r["_model"].predict(Xs))
+    for r in clf_records:
+        if r["screening_ok"] and r["_model"] is not None:
+            probs_p.append(r["_model"].predict_proba(Xs)[:, 1])
     if net is not None:
         pr_s, pc_s = torch_predict(net, Xs)
-        prob_active_s = 0.5 * clf_probs_s + 0.5 * pc_s
-        pred_pIC50_s = 0.75 * pred_reg_s + 0.25 * pr_s
-    else:
-        prob_active_s, pred_pIC50_s = clf_probs_s, pred_reg_s
+        preds_r.append(pr_s)
+        probs_p.append(pc_s)
+
+    # graph nets (GIN / MPNN) score the library too
+    graph_screen_preds = {}
+    if graph:
+        screen_graphs, gk = graphs_for(
+            screen_kept["canonical_smiles"].astype(str).tolist())
+        for kind, m in graph.items():
+            pr_g, pc_g = graph_predict(m["net"], screen_graphs)
+            pr_f = np.full(len(screen_kept), np.nan)
+            pc_f = np.full(len(screen_kept), np.nan)
+            pr_f[gk], pc_f[gk] = pr_g, pc_g
+            pr_f = np.where(np.isnan(pr_f),
+                            float(np.nanmean(pr_f)) if np.isfinite(pr_f).any() else 0.0,
+                            pr_f)
+            pc_f = np.where(np.isnan(pc_f),
+                            float(np.nanmean(pc_f)) if np.isfinite(pc_f).any() else 0.0,
+                            pc_f)
+            graph_screen_preds[kind] = (pr_f, pc_f)
+            preds_r.append(pr_f)
+            probs_p.append(pc_f)
+
+    if os.environ.get("MDM2_PART21_SCREEN_LARGE_MODELS", "0") == "1" and large["scorers"]:
+        print("[screen] also scoring with fine-tuned large models "
+              "(MDM2_PART21_SCREEN_LARGE_MODELS=1)")
+        for nm, sc in large["scorers"]:
+            r_a, p_a = sc(screen_kept["canonical_smiles"].astype(str).tolist())
+            preds_r.append(np.asarray(r_a, dtype=float))
+            probs_p.append(np.asarray(p_a, dtype=float))
+    print(f"[screen] ensemble over {len(preds_r)} regression / "
+          f"{len(probs_p)} classification models")
+    pred_pIC50_s = np.mean(preds_r, axis=0)
+    prob_active_s = np.mean(probs_p, axis=0)
 
     # applicability domain: max Tanimoto sim to training set
     from rdkit import Chem, DataStructs
@@ -806,20 +1629,47 @@ def run_pipeline():
                                                   train_fps)
         max_sim[qi] = max(sims) if sims else 0.0
 
+    # full per-model scores for the library: models compete side by side
+    full = {"identifier": screen_kept["identifier"].values,
+            "canonical_smiles": screen_kept["canonical_smiles"].values}
+    for r in reg_records:
+        if r["screening_ok"] and r["_model"] is not None:
+            full[f"pIC50_{r['model']}"] = r["_model"].predict(Xs)
+    for r in clf_records:
+        if r["screening_ok"] and r["_model"] is not None:
+            full[f"Pactive_{r['model']}"] = r["_model"].predict_proba(Xs)[:, 1]
+    if net is not None:
+        full["pIC50_multitask_net"] = pr_s
+        full["Pactive_multitask_net"] = pc_s
+    for kind, (pr_f, pc_f) in graph_screen_preds.items():
+        full[f"pIC50_{kind}"] = pr_f
+        full[f"Pactive_{kind}"] = pc_f
+    full["pIC50_ensemble"] = pred_pIC50_s
+    full["Pactive_ensemble"] = prob_active_s
+    full["max_tanimoto_sim"] = max_sim
+    full["inside_AD"] = max_sim >= cuts["ad_cut_strict"]
+    pd.DataFrame(full).to_csv(OUT_DIR / "screening_scores_all_models.csv", index=False)
+    print(f"[screen] per-model scores saved -> "
+          f"{_rel(OUT_DIR / 'screening_scores_all_models.csv')} "
+          f"({len(full) - 4} model score columns)")
+
     top_r, top_c = top50_table(pred_pIC50_s, prob_active_s,
                                screen_kept["identifier"].tolist(),
                                screen_kept["canonical_smiles"].tolist(),
                                max_sim, cuts["ad_cut_strict"])
     write_and_print_top50(top_r, top_c)
 
-    maybe_finetune_chemberta(df.iloc[idx_tr].reset_index(drop=True))
-
     inside_ad50 = float(np.mean([r["inside_AD"] for r in top_r])) if top_r else 0.0
     metrics = {
-        "regression_test_xgb": reg_te_m,
-        "classification_test_xgb": clf_te_m,
+        "regression_models": {r["model"]: r["test"] for r in reg_records},
+        "classification_models": {r["model"]: r["test"] for r in clf_records},
         "regression_test_multitask_net": net_reg,
         "classification_test_multitask_net": net_clf,
+        "graph_models": {kind: {"regression_test": m["reg_test"],
+                                "classification_test": m["clf_test"]}
+                         for kind, m in graph.items()},
+        "large_models_status": REPORT.get("large_models_status", ""),
+        "large_models": REPORT.get("large_models", []),
         "screened": int(len(screen_kept)),
         "top50_regression_inside_ad_frac": inside_ad50,
         "device_mode": info["mode"],
