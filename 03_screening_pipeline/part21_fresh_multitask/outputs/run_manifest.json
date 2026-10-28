@@ -1,0 +1,15 @@
+{
+  "output_dir": "03_screening_pipeline/part21_fresh_multitask/outputs",
+  "files": [
+    "run_manifest.json",
+    "top50_classification.csv",
+    "top50_regression.csv",
+    "verification_report.json"
+  ],
+  "sha256": {
+    "03_screening_pipeline/part21_fresh_multitask/outputs/run_manifest.json": "277cda8a3fc6b6b6a9e70dff7d6d2e7682c0c0cafc6f8cd49ede35c2d33f264a",
+    "03_screening_pipeline/part21_fresh_multitask/outputs/top50_classification.csv": "c59d2af3f339ea5f88a133e14f5ce7437dbb2cbc30fd6138d3c747bfefc701ce",
+    "03_screening_pipeline/part21_fresh_multitask/outputs/top50_regression.csv": "2bbb6e08317d9507876117760d122ede35332ee070298185477d25c298ce9a69",
+    "03_screening_pipeline/part21_fresh_multitask/outputs/verification_report.json": "c0730c981072c2986e20b20542de81352e4c49043941caf5fb19fa44d403b4f3"
+  }
+}

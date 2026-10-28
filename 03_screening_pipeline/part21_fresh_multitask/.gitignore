@@ -1,0 +1,5 @@
+# Large verbose run logs and transient artifacts stay local
+run_full.log
+outputs_smoke/
+__pycache__/
+*.pyc

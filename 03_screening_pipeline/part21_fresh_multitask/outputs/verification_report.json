@@ -1,0 +1,138 @@
+{
+  "started": "2026-10-28 08:17:24",
+  "checks": {
+    "scaffold_leakage": {
+      "status": "PASS",
+      "shared_scaffolds": 0,
+      "n_train_groups": 188,
+      "n_val_groups": 23,
+      "n_test_groups": 25
+    },
+    "type_consistency": {
+      "status": "PASS",
+      "problems": []
+    },
+    "data_sanity": {
+      "status": "PASS",
+      "nan_pIC50": 0,
+      "duplicate_smiles": 0,
+      "rows": 645,
+      "raw_rows": 645,
+      "rows_kept": 645,
+      "bad_labels_dropped": 0,
+      "invalid_smiles_dropped": 0,
+      "out_of_range_pIC50": 0,
+      "pIC50_min": 3.598599459218456,
+      "pIC50_max": 10.229147988357855
+    },
+    "screening_old_columns_ignored": {
+      "status": "PASS",
+      "dropped": [],
+      "kept": [
+        "identifier",
+        "canonical_smiles"
+      ]
+    },
+    "feature_label_leakage": {
+      "status": "PASS",
+      "note": "features come from Morgan FP + RDKit descriptors of SMILES only; identifiers, labels and old probabilities never enter features"
+    },
+    "train_screen_id_overlap": {
+      "status": "PASS",
+      "shared_ids": 0,
+      "note": "informational; usual value is 0"
+    },
+    "two_gpu": {
+      "status": "SKIPPED-CPU",
+      "gpu_count": 0,
+      "mode": "CPU"
+    },
+    "feature_matrix_purity": {
+      "status": "PASS",
+      "feature_dim": 2058,
+      "expected_dim": 2058,
+      "note": "only Morgan bits + RDKit descriptors; no identifiers, labels or old prediction columns are present"
+    },
+    "output_top50_regression.csv": {
+      "status": "PASS",
+      "exists": true
+    },
+    "output_top50_classification.csv": {
+      "status": "PASS",
+      "exists": true
+    },
+    "top50_outputs": {
+      "status": "PASS",
+      "files": [
+        "top50_regression.csv",
+        "top50_classification.csv"
+      ]
+    },
+    "verification_report_written": {
+      "status": "PASS",
+      "path": "03_screening_pipeline/part21_fresh_multitask/outputs/verification_report.json"
+    }
+  },
+  "type_issues": [],
+  "data_sanity": {
+    "raw_rows": 645,
+    "rows_kept": 645,
+    "nan_pIC50_dropped": 0,
+    "bad_labels_dropped": 0,
+    "invalid_smiles_dropped": 0,
+    "out_of_range_pIC50": 0,
+    "duplicate_smiles": 0,
+    "pIC50_min": 3.598599459218456,
+    "pIC50_max": 10.229147988357855
+  },
+  "device": {
+    "cuda": false,
+    "n_gpu": 0,
+    "device": "cpu",
+    "mode": "CPU"
+  },
+  "large_model": {
+    "status": "skipped-by-flag"
+  },
+  "final": {
+    "regression_test_xgb": {
+      "rmse": 0.913625479251927,
+      "mae": 0.6422638579993525,
+      "r2": 0.482405043423352,
+      "n": 65
+    },
+    "classification_test_xgb": {
+      "auc_roc": 0.8544061302681993,
+      "auc_pr": 0.7862288159860056,
+      "accuracy": 0.7538461538461538,
+      "balanced_accuracy": 0.7476053639846744,
+      "mean_prob_active": 0.5788357257843018,
+      "mean_prob_active_when_active": 0.7996007204055786,
+      "mean_prob_active_when_inactive": 0.30478259921073914,
+      "n_active": 36,
+      "n_inactive": 29
+    },
+    "regression_test_multitask_net": {
+      "rmse": 1.1466890958942695,
+      "mae": 0.8313796983002005,
+      "r2": 0.18464827193844802,
+      "n": 65
+    },
+    "classification_test_multitask_net": {
+      "auc_roc": 0.9003831417624522,
+      "auc_pr": 0.8370939409081299,
+      "accuracy": 0.8769230769230769,
+      "balanced_accuracy": 0.8788314176245211,
+      "mean_prob_active": 0.5211392045021057,
+      "mean_prob_active_when_active": 0.8242515921592712,
+      "mean_prob_active_when_inactive": 0.14486171305179596,
+      "n_active": 36,
+      "n_inactive": 29
+    },
+    "screened": 154587,
+    "top50_regression_inside_ad_frac": 0.2,
+    "device_mode": "CPU",
+    "elapsed_s": 266.9,
+    "type_issues": []
+  }
+}
