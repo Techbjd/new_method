@@ -14,21 +14,28 @@ prob_class_0 / prob_class_1 columns are dropped on load).
    counts NaN / invalid SMILES / duplicates (reported, not silent).
 3. Bemis-Murcko **scaffold split** 80/10/10 — scaffolds never span splits
    (verified live: 0 shared scaffolds during the smoke run).
-4. Features only from free chemistry: RDKit Morgan FP (2048 bits, r=2)
-   + 10 molecular descriptors. No labels, no identifiers in the matrix.
+4. Features only from free chemistry: **10 RDKit descriptors + SIX
+   fingerprint families** — Morgan-2048 (r=2), MACCS-167,
+   RDKit-topological-2048, AtomPair-2048, TopologicalTorsion-2048, and
+   Avalon-1024 (skipped automatically if unavailable) — ~7.5k features.
+   No labels, no identifiers in the matrix. The 154k screening library is
+   featurized as a scipy **CSR sparse** matrix.
 5. Separate regression (pIC50) and classification (Active vs Inactive)
    tracks, each with its own printed metrics block (RMSE/MAE/R2 for
    regression; AUC-ROC, AUC-PR, balanced accuracy, per-class probability
    means for classification).
 6. **Multiple competing models** — every model trains on the same
    leakage-safe split and competes in per-task leaderboards:
-   - Tabular: `xgboost`, `random_forest`, `extra_trees`, `lightgbm`
-     (auto pip-install if missing), `sklearn_hist_gb`, `svr_rbf`/`svc_rbf`
-     (SVM excluded from the screening ensemble only because predicting
-     154k molecules with RBF kernels is impractical).
+   - Tabular: `xgboost`, `random_forest`, `extra_trees`, `lightgbm`,
+     `catboost`, `adaboost`, `knn`, `ridge` (linear baseline),
+     `sklearn_hist_gb`, `svr_rbf`/`svc_rbf` (SVM excluded from the
+     screening ensemble only because predicting 154k molecules with RBF
+     kernels is impractical; lightgbm/catboost are auto pip-installed
+     once if missing, skipped cleanly if unavailable).
    - Deep learning: PyTorch **multitask network** (shared trunk, 2 heads),
      **GIN** and **MPNN** graph networks trained on RDKit molecular graphs
-     (atoms = nodes, bonds = edges).
+     (atoms = nodes, bonds = edges), and a **SMILES char-CNN** (1-D
+     convolutions over the raw SMILES string, trained from scratch).
    - Large pretrained transformers, each fine-tuned with a separate
      regression head and a separate classification head, wrapped in
      `nn.DataParallel`, so a Kaggle session with 2× T4 fine-tunes on
@@ -75,6 +82,10 @@ python3 verify_pipeline.py        # 13 checks, verbose PASS/FAIL, exit 0 on gree
 | `MDM2_PART21_INPUT_DIR` / `MDM2_PART21_OUTPUT_DIR` | path overrides |
 | `MDM2_PART21_EPOCHS` | override multitask-net epochs (default 150) |
 | `MDM2_PART21_GNN_EPOCHS` | override GIN/MPNN epochs (default 60) |
+| `MDM2_PART21_CNN_EPOCHS` | override SMILES char-CNN epochs (default 60) |
+| `MDM2_PART21_SKIP_SCAN=1` | skip the 5-fold CV hyperparameter scan (default params used) |
+| `MDM2_PART21_SCAN_EPOCHS` | DL-scan epochs per fold (default 40; smoke 3) |
+| `MDM2_PART21_SKIP_LARGE_CV=1` | skip the large-model LR mini-scan |
 
 ## Guarantees checked by the built-in verifier
 

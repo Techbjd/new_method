@@ -34,6 +34,12 @@
 #   MDM2_PART21_SKIP_LARGE_CV=1        skip the large-model LR mini-scan
 #   MDM2_PART21_EPOCHS                 override torch multitask epochs
 #   MDM2_PART21_GNN_EPOCHS             override GIN/MPNN epochs
+#   MDM2_PART21_CNN_EPOCHS             override SMILES char-CNN epochs
+#
+# Features: 10 RDKit physicochemical descriptors + SIX fingerprint families
+# (Morgan-2048, MACCS-167, RDKit-topological-2048, AtomPair-2048,
+# TopologicalTorsion-2048, Avalon-1024 when available) -> ~7.5k features.
+# The screening library is featurized as a scipy CSR matrix.
 # =============================================================================
 import hashlib
 import importlib
@@ -361,11 +367,51 @@ def _desc_names():
 
 
 def fp_of(smiles):
+    """Morgan-only vector (kept for quick AD/similarity helpers)."""
     from rdkit import Chem
     mol = Chem.MolFromSmiles(smiles)
     if mol is None:
         return None
     return _morgan_gen().GetFingerprintAsNumPy(mol).astype(np.float32)
+
+
+FP_BLOCKS = None   # cached [(name, size, fn(mol) -> float32 bit vector)]
+
+
+def _bits(bv, n):
+    arr = np.zeros(n, dtype=np.float32)
+    arr[list(bv.GetOnBits())] = 1.0
+    return arr
+
+
+def _fp_blocks():
+    """Every fingerprint family, computed with RDKit only (no DeepChem
+    dependency needed — DeepChem's featurizers are re-implemented here).
+    Cached once: morgan2048 | maccs167 | rdkfp2048 | atompair2048 |
+    torsion2048 | avalon1024 (optional)."""
+    global FP_BLOCKS
+    if FP_BLOCKS is not None:
+        return FP_BLOCKS
+    from rdkit.Chem import MACCSkeys, rdFingerprintGenerator
+    rdk_g = rdFingerprintGenerator.GetRDKitFPGenerator(fpSize=2048)
+    ap_g = rdFingerprintGenerator.GetAtomPairGenerator(fpSize=2048)
+    tt_g = rdFingerprintGenerator.GetTopologicalTorsionGenerator(fpSize=2048)
+    blocks = [
+        ("morgan2048", MORGAN_BITS,
+         lambda m: _morgan_gen().GetFingerprintAsNumPy(m).astype(np.float32)),
+        ("maccs167", 167, lambda m: _bits(MACCSkeys.GenMACCSKeys(m), 167)),
+        ("rdkfp2048", 2048, lambda m: rdk_g.GetFingerprintAsNumPy(m).astype(np.float32)),
+        ("atompair2048", 2048, lambda m: ap_g.GetFingerprintAsNumPy(m).astype(np.float32)),
+        ("torsion2048", 2048, lambda m: tt_g.GetFingerprintAsNumPy(m).astype(np.float32)),
+    ]
+    try:
+        from rdkit.Avalon import pyAvalonTools
+        blocks.append(("avalon1024", 1024,
+                       lambda m: _bits(pyAvalonTools.GetAvalonFP(m, nBits=1024), 1024)))
+    except Exception:
+        print("[features] Avalon fingerprint unavailable -> skipped")
+    FP_BLOCKS = blocks
+    return FP_BLOCKS
 
 
 def desc_of(smiles):
@@ -382,23 +428,63 @@ def desc_of(smiles):
         return None
 
 
-def build_features(smiles_list, label=""):
-    """X = [morgan_bits | descriptors]; boolean validity mask per molecule."""
+def build_features(smiles_list, label="", sparse=False):
+    """X = [morgan2048 | maccs167 | rdkfp2048 | atompair2048 | torsion2048 |
+    avalon1024? | descriptors10] -> (~7.5k features). Rows whose molecule
+    fails any featurizer are dropped (validity mask returned). sparse=True
+    returns a scipy CSR float32 matrix — REQUIRED for the 154k screening
+    library (dense would be ~4.6 GB; CSR is ~1-2 GB)."""
     if label:
         print(f"[features] featurizing {label}: {len(smiles_list)} molecules ...")
-    fps, dss, keep = [], [], []
-    for s in smiles_list:
-        f, d = fp_of(s), desc_of(s)
-        if f is None or d is None:
+    blocks = _fp_blocks()
+    sizes = [size for _n, size, _f in blocks]
+    n_desc = len(_desc_names())
+    D = int(np.sum(sizes)) + n_desc
+    from rdkit import Chem
+    rows_i, cols_i, vals = [], [], []
+    keep = []
+    n_kept = 0
+    for r, s in enumerate(smiles_list):
+        mol = Chem.MolFromSmiles(s)
+        d = desc_of(s)
+        if mol is None or d is None:
+            keep.append(False)
+            continue
+        try:
+            bit_arrays = [fn(mol) for _n, _s, fn in blocks]
+        except Exception:
             keep.append(False)
             continue
         keep.append(True)
-        fps.append(f)
-        dss.append(d)
-    X = np.hstack([np.asarray(fps, dtype=np.float32),
-                   np.asarray(dss, dtype=np.float32)])
+        c0 = 0
+        for arr in bit_arrays:
+            idx = np.flatnonzero(arr)
+            if len(idx):
+                rows_i.append(np.full(len(idx), n_kept, dtype=np.int64))
+                cols_i.append(idx + c0)
+                vals.append(arr[idx].astype(np.float32))
+            c0 += len(arr)
+        # descriptor tail (last n_desc columns)
+        rows_i.append(np.full(n_desc, n_kept, dtype=np.int64))
+        cols_i.append(np.arange(D - n_desc, D, dtype=np.int64))
+        vals.append(d)
+        n_kept += 1
+        if label and n_kept % 20000 == 0:
+            print(f"[features]   {label}: {n_kept} featurized ...")
+    rows = np.concatenate(rows_i) if rows_i else np.zeros(0, np.int64)
+    cols = np.concatenate(cols_i) if cols_i else np.zeros(0, np.int64)
+    vls = np.concatenate(vals) if vals else np.zeros(0, np.float32)
+    if sparse:
+        import scipy.sparse as sp
+        X = sp.csr_matrix((vls, (rows, cols)), shape=(n_kept, D),
+                          dtype=np.float32)
+    else:
+        X = np.zeros((n_kept, D), dtype=np.float32)
+        if len(rows):
+            X[rows, cols] = vls
     if label:
-        print(f"[features] {label}: kept {len(X)}/{len(smiles_list)} -> X {X.shape}")
+        print(f"[features] {label}: kept {n_kept}/{len(smiles_list)} -> "
+              f"X ({n_kept}, {D})  blocks={[n for n, _s, _f in blocks]}")
     return X, np.array(keep, dtype=bool)
 
 
@@ -585,11 +671,105 @@ def train_torch_multitask(Xtr, ytr_reg, ytr_clf, epochs=None, params=None):
     return net
 
 
-def torch_predict(net, X):
+def torch_predict(net, X, bs=8192):
+    """Chunked prediction — accepts dense numpy or scipy-sparse CSR X (the
+    154k screening matrix is CSR; ~7.5k features per row)."""
     dev = next(net.parameters()).device
+    net.eval()
+    out_r, out_c = [], []
     with torch.no_grad():
-        pr, pc = net(torch.tensor(X, dtype=torch.float32).to(dev))
-    return pr.cpu().numpy(), torch.sigmoid(pc).cpu().numpy()
+        for i in range(0, len(X), bs):
+            xb = torch.as_tensor(np.asarray(X[i:i + bs]),
+                                 dtype=torch.float32, device=dev)
+            pr, pc = net(xb)
+            out_r.append(pr.view(-1).cpu().numpy())
+            out_c.append(torch.sigmoid(pc).cpu().numpy())
+    return (np.concatenate(out_r) if out_r else np.zeros(0),
+            np.concatenate(out_c) if out_c else np.zeros(0))
+
+
+# --- SMILES char-CNN (text-based deep model trained from scratch) ------------
+CNN_ALPHABET = "#%()+-./0123456789=@ABCDEFGHIKLMNOPRSTUVWXYZ[\\]abcdefghiklmnoprstuyz"
+CNN_LEN = 142
+
+
+def cnn_tokenize(smiles_list):
+    """SMILES -> fixed-length char-id matrix (unknown chars -> 0 = pad/unk)."""
+    vocab = {c: i + 1 for i, c in enumerate(CNN_ALPHABET)}
+    ids = np.zeros((len(smiles_list), CNN_LEN), dtype=np.int64)
+    for r, s in enumerate(smiles_list):
+        seq = [vocab.get(c, 0) for c in s.strip()[:CNN_LEN]]
+        ids[r, :len(seq)] = seq
+    return ids
+
+
+class SmilesCharCNN(nn.Module):
+    """1-D CNN over SMILES characters: 3 conv widths (3/5/7) -> concat -> two
+    single-logit heads (same convention as TorchMultitaskNet)."""
+
+    def __init__(self, filters=96):
+        super().__init__()
+        self.emb = nn.Embedding(len(CNN_ALPHABET) + 1, 48, padding_idx=0)
+        self.convs = nn.ModuleList(
+            [nn.Conv1d(48, filters, k, padding=k // 2) for k in (3, 5, 7)])
+        self.bns = nn.ModuleList([nn.BatchNorm1d(filters) for _ in range(3)])
+        self.drop = nn.Dropout(0.15)
+        self.head_reg = nn.Linear(3 * filters, 1)
+        self.head_clf = nn.Linear(3 * filters, 1)
+
+    def forward(self, ids):
+        x = self.emb(ids).transpose(1, 2)          # (B, 48, L)
+        hs = [torch.relu(bn(conv(x))).max(dim=2).values
+              for conv, bn in zip(self.convs, self.bns)]
+        h = self.drop(torch.cat(hs, dim=1))
+        return self.head_reg(h).view(-1), self.head_clf(h).view(-1)
+
+
+def train_smiles_cnn(ids, ytr_r, ytr_c, epochs=None, params=None):
+    params = params or {}
+    filters = int(params.get("filters", 96))
+    lr = float(params.get("lr", 1e-3))
+    info = devices_report()
+    dev = info["device"]
+    epochs = epochs if epochs is not None else int(
+        os.environ.get("MDM2_PART21_CNN_EPOCHS", "60"))
+    cnn = SmilesCharCNN(filters=filters).to(dev)
+    opt = torch.optim.Adam(cnn.parameters(), lr=lr, weight_decay=1e-5)
+    mse, bce = nn.MSELoss(), nn.BCEWithLogitsLoss()
+    n = len(ids)
+    order = np.arange(n)
+    cnn.train()
+    for ep in range(epochs):
+        np.random.shuffle(order)
+        run = 0.0
+        for s in range(0, n, 64):
+            ii = order[s:s + 64]
+            ids_b = torch.as_tensor(ids[ii], device=dev)
+            yr = torch.as_tensor(ytr_r[ii], dtype=torch.float32, device=dev)
+            yc = torch.as_tensor(ytr_c[ii], dtype=torch.float32, device=dev)
+            opt.zero_grad()
+            pr, pc = cnn(ids_b)
+            loss = mse(pr, yr) + bce(pc, yc)
+            loss.backward()
+            opt.step()
+            run += float(loss.detach())
+        if (ep + 1) % 15 == 0 or ep == epochs - 1:
+            print(f"[cnn] epoch {ep + 1}/{epochs} joint_loss={run:.4f}")
+    cnn.eval()
+    return cnn
+
+
+def cnn_predict(cnn, ids, bs=512):
+    dev = next(cnn.parameters()).device
+    out_r, out_c = [], []
+    with torch.no_grad():
+        for i in range(0, len(ids), bs):
+            xb = torch.as_tensor(ids[i:i + bs], device=dev)
+            pr, pc = cnn(xb)
+            out_r.append(pr.view(-1).cpu().numpy())
+            out_c.append(torch.sigmoid(pc).view(-1).cpu().numpy())
+    return (np.concatenate(out_r) if out_r else np.zeros(0),
+            np.concatenate(out_c) if out_c else np.zeros(0))
 
 
 # --- Graph deep-learning models: GIN + MPNN on RDKit molecular graphs --------
@@ -838,28 +1018,32 @@ def scaffold_folds(keys_subset, n_folds=N_FOLDS, seed=SEED):
     return folds
 
 
-_LGBM = 0            # 0 = not tried; False = unavailable; module = available
+_MODULE_CACHE = {}   # name -> module | False (unavailable); 0 = not tried
 
 
-def _try_lightgbm():
-    global _LGBM
-    if _LGBM != 0:
-        return _LGBM or None
+def _try_module(mod_name):
+    """Import an optional module; attempt one quiet pip install if missing.
+    Cached so pip is never retried after a failure."""
+    state = _MODULE_CACHE.get(mod_name, 0)
+    if state != 0:
+        return state if state is not False else None
     try:
-        _LGBM = importlib.import_module("lightgbm")
-        return _LGBM
+        mod = importlib.import_module(mod_name)
+        _MODULE_CACHE[mod_name] = mod
+        return mod
     except Exception:
         pass
     try:
         import subprocess
-        print("[lightgbm] missing; installing via pip (lightgbm) ...")
-        subprocess.run([sys.executable, "-m", "pip", "install", "-q", "lightgbm"],
-                       timeout=300)
-        _LGBM = importlib.import_module("lightgbm")
-        return _LGBM
+        print(f"[setup] {mod_name} missing; installing via pip ({mod_name}) ...")
+        subprocess.run([sys.executable, "-m", "pip", "install", "-q", mod_name],
+                       timeout=600)
+        mod = importlib.import_module(mod_name)
+        _MODULE_CACHE[mod_name] = mod
+        return mod
     except Exception as exc:
-        _LGBM = False
-        print(f"[lightgbm] unavailable -> {type(exc).__name__}: {exc} "
+        _MODULE_CACHE[mod_name] = False
+        print(f"[setup] {mod_name} unavailable -> {type(exc).__name__}: {exc} "
               "(that model is skipped)")
         return None
 
@@ -867,7 +1051,9 @@ def _try_lightgbm():
 def _tabular_names():
     """(name, screening_ok) for every tabular competitor."""
     return [("xgboost", True), ("random_forest", True), ("extra_trees", True),
-            ("lightgbm", True), ("sklearn_hist_gb", True), ("svm", False)]
+            ("lightgbm", True), ("catboost", True), ("adaboost", True),
+            ("knn", True), ("ridge", True), ("sklearn_hist_gb", True),
+            ("svm", False)]
 
 
 def _make_tabular(task, name, params=None):
@@ -897,13 +1083,41 @@ def _make_tabular(task, name, params=None):
         kw.update(params)
         return (ExtraTreesRegressor if is_reg else ExtraTreesClassifier)(**kw)
     if name == "lightgbm":
-        lg = _try_lightgbm()
+        lg = _try_module("lightgbm")
         if lg is None:
             return None
         kw = dict(n_estimators=500, learning_rate=0.05, subsample=0.9,
                   colsample_bytree=0.9, random_state=SEED, verbosity=-1, n_jobs=4)
         kw.update(params)
         return (lg.LGBMRegressor if is_reg else lg.LGBMClassifier)(**kw)
+    if name == "catboost":
+        cb = _try_module("catboost")
+        if cb is None:
+            return None
+        kw = dict(iterations=400, learning_rate=0.05, depth=6, random_seed=SEED,
+                  verbose=False, allow_writing_files=False, thread_count=4)
+        kw.update(params)
+        return (cb.CatBoostRegressor if is_reg else cb.CatBoostClassifier)(**kw)
+    if name == "adaboost":
+        from sklearn.ensemble import AdaBoostClassifier, AdaBoostRegressor
+        kw = dict(n_estimators=300, learning_rate=0.5, random_state=SEED)
+        kw.update(params)
+        return (AdaBoostRegressor if is_reg else AdaBoostClassifier)(**kw)
+    if name == "knn":
+        from sklearn.neighbors import (KNeighborsClassifier,
+                                       KNeighborsRegressor)
+        kw = dict(n_neighbors=8, weights="distance", n_jobs=4)
+        kw.update(params)
+        return (KNeighborsRegressor if is_reg else KNeighborsClassifier)(**kw)
+    if name == "ridge":
+        from sklearn.linear_model import LogisticRegression, Ridge
+        if is_reg:
+            kw = dict(alpha=1.0)
+            kw.update(params)
+            return Ridge(**kw)
+        # classification: L2 logistic regression, grid alpha maps to C=1/alpha
+        C = 1.0 / float(params.get("alpha", 1.0))
+        return LogisticRegression(C=C, max_iter=2000, random_state=SEED)
     if name == "sklearn_hist_gb":
         kw = dict(max_iter=400, random_state=SEED)
         kw.update(params)
@@ -925,6 +1139,13 @@ SCAN_GRIDS = {
                     for n in (300, 600) for d in (None, 16)],
     "lightgbm": [dict(num_leaves=n, learning_rate=l)
                  for n in (31, 63) for l in (0.05, 0.10)],
+    "catboost": [dict(iterations=n, depth=d, learning_rate=l)
+                 for n in (300, 600) for d in (6, 8) for l in (0.05, 0.10)],
+    "adaboost": [dict(n_estimators=n, learning_rate=l)
+                 for n in (200, 400) for l in (0.5, 1.0)],
+    "knn": [dict(n_neighbors=k, weights=w)
+            for k in (5, 10) for w in ("uniform", "distance")],
+    "ridge": [dict(alpha=a) for a in (0.5, 1.0, 10.0)],
     "sklearn_hist_gb": [dict(max_iter=n, learning_rate=l)
                         for n in (200, 400) for l in (0.05, 0.10)],
     "svm": [dict(C=c) for c in (1.0, 10.0)],
@@ -934,7 +1155,7 @@ SCAN_GRIDS = {
 def cv_scan_tabular(task, Xc, y, folds):
     out = {}
     for name, _ok in _tabular_names():
-        if name == "lightgbm" and _try_lightgbm() is None:
+        if name in ("lightgbm", "catboost") and _try_module(name) is None:
             continue
         rows = []
         for params in SCAN_GRIDS[name]:
@@ -961,7 +1182,7 @@ def cv_scan_tabular(task, Xc, y, folds):
     return out
 
 
-def cv_scan_deep(task, Xc, y_r, y_c, folds, gs_all, scan_ep):
+def cv_scan_deep(task, Xc, y_r, y_c, folds, gs_all, scan_ep, cnn_ids=None):
     """5-fold CV scan of the joint two-head DL models (multitask net, GIN,
     MPNN). Each candidate trains jointly (both heads) and is scored on the
     task metric over the fold-validation molecules."""
@@ -1020,6 +1241,33 @@ def cv_scan_deep(task, Xc, y_r, y_c, folds, gs_all, scan_ep):
         rows.sort(key=lambda r: r["mean"], reverse=(task == "classification"))
         out[kind] = rows
         print(f"[cv-scan:{task}] {kind:<16} best={rows[0]['params']} "
+              f"{rows[0]['metric']}={rows[0]['mean']:.4f}±{rows[0]['std']:.4f}")
+
+    # SMILES char-CNN (text-based deep model)
+    if cnn_ids is not None:
+        rows = []
+        for filters in (64, 96):
+            for lr in (1e-3, 3e-4):
+                scores = []
+                for tr_f, va_f in folds:
+                    c = train_smiles_cnn(
+                        cnn_ids[tr_f], y_r[tr_f], y_c[tr_f], epochs=scan_ep,
+                        params={"filters": filters, "lr": lr})
+                    pr_f, pc_f = cnn_predict(c, cnn_ids[va_f])
+                    scores.append(
+                        regression_metrics(y_r[va_f], pr_f)["rmse"]
+                        if task == "regression" else
+                        classification_metrics(y_c[va_f], pc_f)["auc_roc"])
+                rows.append({"params": {"filters": filters, "lr": lr},
+                             "metric": "rmse" if task == "regression"
+                             else "auc_roc",
+                             "fold_scores": [round(float(s), 4)
+                                             for s in scores],
+                             "mean": float(np.mean(scores)),
+                             "std": float(np.std(scores))})
+        rows.sort(key=lambda r: r["mean"], reverse=(task == "classification"))
+        out["smiles_cnn"] = rows
+        print(f"[cv-scan:{task}] {'smiles_cnn':<16} best={rows[0]['params']} "
               f"{rows[0]['metric']}={rows[0]['mean']:.4f}±{rows[0]['std']:.4f}")
     return out
 
@@ -1396,7 +1644,8 @@ def finalize_report(elapsed, metrics):
     (OUT_DIR / "verification_report.json").write_text(json.dumps(REPORT, indent=2, default=str))
     files = _dir_files(OUT_DIR)
     manifest = {"output_dir": _rel(OUT_DIR), "files": files,
-                "sha256": {_rel(OUT_DIR / f): _sha256(OUT_DIR / f) for f in files}}
+                "sha256": {_rel(OUT_DIR / f): _sha256(OUT_DIR / f) for f in files},
+                "feature_groups": REPORT.get("feature_groups", [])}
     (OUT_DIR / "run_manifest.json").write_text(json.dumps(manifest, indent=2, default=str))
     allowed = ("PASS", "SKIPPED-1GPU", "SKIPPED-CPU", "SKIPPED-TRANSFORMERS",
                "SKIPPED-SMOKE", "WARN")
@@ -1432,6 +1681,7 @@ def run_pipeline():
     # ---------------- featurize ------------------------------------------
     clean_smiles = df["smiles"].tolist()          # AD reference pre-keep-mask
     X_all, keep_mol = build_features(df["smiles"].tolist(), label="training")
+    REPORT["feature_groups"] = [n for n, _s, _f in _fp_blocks()] + ["descriptors10"]
     yreg = df["pIC50"].values.astype(float)
     yclf = df["activity"].values.astype(int)
     remap_all = np.where(keep_mol)[0]
@@ -1479,10 +1729,14 @@ def run_pipeline():
         scan["classification"] = cv_scan_tabular("classification", Xc, y_c_all,
                                                  cv_folds)
         if TORCH_OK and gs_all:
+            cnn_ids_all = cnn_tokenize(
+                df.loc[idx_cvt, "smiles"].astype(str).tolist())
             deep_scan["regression"] = cv_scan_deep(
-                "regression", Xc, y_r_all, y_c_all, cv_folds, gs_all, scan_ep)
+                "regression", Xc, y_r_all, y_c_all, cv_folds, gs_all, scan_ep,
+                cnn_ids=cnn_ids_all)
             deep_scan["classification"] = cv_scan_deep(
-                "classification", Xc, y_r_all, y_c_all, cv_folds, gs_all, scan_ep)
+                "classification", Xc, y_r_all, y_c_all, cv_folds, gs_all,
+                scan_ep, cnn_ids=cnn_ids_all)
         # joint two-head DL models pick the classification-scan winner
         if deep_scan:
             dl_best = {kind: deep_scan["classification"][kind][0]["params"]
@@ -1546,6 +1800,33 @@ def run_pipeline():
                             "train_time_s": m["train_time_s"], "screening_ok": True,
                             "cv_best": gb})
 
+    # ---------------- SMILES char-CNN (text-based deep model) -------------
+    cnn = None
+    if TORCH_OK:
+        t0c = time.time()
+        df_ids = cnn_tokenize(df["smiles"].astype(str).tolist())
+        cnn = train_smiles_cnn(df_ids[idx_tr], ytr_r, ytr_c,
+                               params=dl_best.get("smiles_cnn"))
+        pr_va, pc_va = cnn_predict(cnn, df_ids[idx_va])
+        pr_te, pc_te = cnn_predict(cnn, df_ids[idx_te])
+        cnn_reg_v, cnn_reg = regression_metrics(yva_r, pr_va), \
+            regression_metrics(yte_r, pr_te)
+        cnn_clf_v, cnn_clf = classification_metrics(yva_c, pc_va), \
+            classification_metrics(yte_c, pc_te)
+        print("[regression] smiles-cnn test:", cnn_reg)
+        print("[classification] smiles-cnn test:", cnn_clf)
+        cnn_t = round(time.time() - t0c, 1)
+        cb = (deep_scan.get("classification", {}).get("smiles_cnn")
+              or [None])[0]
+        reg_records.append({"model": "smiles_cnn", "_model": None,
+                            "val": cnn_reg_v, "test": cnn_reg,
+                            "train_time_s": cnn_t, "screening_ok": True,
+                            "cv_best": cb})
+        clf_records.append({"model": "smiles_cnn", "_model": None,
+                            "val": cnn_clf_v, "test": cnn_clf,
+                            "train_time_s": cnn_t, "screening_ok": True,
+                            "cv_best": cb})
+
     # ---------------- deep-learning large models (2 GPUs) ----------------
     va_texts = df.loc[idx_va, "smiles"].tolist()
     te_texts = df.loc[idx_te, "smiles"].tolist()
@@ -1575,7 +1856,7 @@ def run_pipeline():
     # ---------------- screening ------------------------------------------
     print("\n[screen] screening the library (identifier + canonical_smiles only)")
     Xs, keep_s = build_features(screen_raw["canonical_smiles"].astype(str).tolist(),
-                                label="screening")
+                                label="screening", sparse=True)
     screen_kept = screen_raw.loc[keep_s].reset_index(drop=True)
     print(f"[screen] kept {len(screen_kept)}/{len(screen_raw)} screening molecules")
 
@@ -1583,12 +1864,26 @@ def run_pipeline():
     preds_r, probs_p = [], []
     for r in reg_records:
         if r["screening_ok"] and r["_model"] is not None:
-            preds_r.append(r["_model"].predict(Xs))
+            try:
+                preds_r.append(np.asarray(r["_model"].predict(Xs), dtype=float))
+            except Exception as exc:
+                print(f"[screen] {r['model']} regression predict failed -> "
+                      f"{type(exc).__name__}: {exc}")
     for r in clf_records:
         if r["screening_ok"] and r["_model"] is not None:
-            probs_p.append(r["_model"].predict_proba(Xs)[:, 1])
+            try:
+                probs_p.append(
+                    np.asarray(r["_model"].predict_proba(Xs)[:, 1], dtype=float))
+            except Exception as exc:
+                print(f"[screen] {r['model']} classification predict failed -> "
+                      f"{type(exc).__name__}: {exc}")
     if net is not None:
         pr_s, pc_s = torch_predict(net, Xs)
+        preds_r.append(pr_s)
+        probs_p.append(pc_s)
+    if cnn is not None:
+        pr_s, pc_s = cnn_predict(
+            cnn, cnn_tokenize(screen_kept["canonical_smiles"].astype(str).tolist()))
         preds_r.append(pr_s)
         probs_p.append(pc_s)
 
