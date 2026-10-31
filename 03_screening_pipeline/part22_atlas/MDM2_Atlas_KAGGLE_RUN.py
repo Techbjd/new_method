@@ -23,10 +23,13 @@ Kaggle one-cell command
 
 Optional environment overrides
 ------------------------------
-SMOKE=1                 quick smoke test instead of the full run
-DL_EPOCHS=30            shorter DL training
+MDM2_ATLAS_SMOKE=1      quick smoke test instead of the full run
+MDM2_ATLAS_DL_EPOCHS=30 shorter DL training
 MDM2_ATLAS_WORKDIR=...  output/work directory (default: /kaggle/working)
 MDM2_ATLAS_PIPELINE=... use a local flat-pipeline file instead of downloading
+
+The runner forces a full run by default. It deliberately does NOT inherit a
+generic SMOKE=1 or DL_EPOCHS=3 left over from another notebook cell.
 """
 
 from __future__ import annotations
@@ -124,10 +127,10 @@ def main() -> None:
     log_path = os.path.join(workdir, "atlas_run.log")
     os.makedirs(out_dir, exist_ok=True)
 
-    # Full run by default. Override with env vars only for a deliberate smoke test.
-    os.environ["SMOKE"] = os.environ.get("SMOKE", "0")
-    os.environ["SCAN_FOLDS"] = os.environ.get("SCAN_FOLDS", "5")
-    os.environ["DL_EPOCHS"] = os.environ.get("DL_EPOCHS", "60")
+    # Full run by default. Use the MDM2_ATLAS_* names only for a deliberate smoke test.
+    os.environ["SMOKE"] = os.environ.get("MDM2_ATLAS_SMOKE", "0")
+    os.environ["SCAN_FOLDS"] = os.environ.get("MDM2_ATLAS_SCAN_FOLDS", "5")
+    os.environ["DL_EPOCHS"] = os.environ.get("MDM2_ATLAS_DL_EPOCHS", "60")
     os.environ["MDM2_ATLAS_INPUT_DIR"] = workdir
     os.environ["MDM2_ATLAS_OUTPUT_DIR"] = out_dir
 
