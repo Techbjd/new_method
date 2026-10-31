@@ -79,17 +79,19 @@ np.random.seed(RUN_SEED)
 T_START = time.time()
 print("[S02] runtime:", sys.version.split()[0])
 
-def _pip(pkg):
+def _pip(pkg, pip_name=None):
     try:
         return __import__(pkg)
     except Exception:
-        subprocess.run([sys.executable, "-m", "pip", "install", "-q", pkg.split("==")[0]], check=False)
+        print(f"[S02] installing missing package: {pip_name or pkg}")
+        subprocess.run([sys.executable, "-m", "pip", "install", "-q",
+                        (pip_name or pkg).split("==")[0]], check=False)
     return __import__(pkg)
 
 import torch
-import torch_geometric
-import sklearn
-import rdkit
+torch_geometric = _pip("torch_geometric")
+sklearn = _pip("sklearn", "scikit-learn")
+rdkit = _pip("rdkit")
 print("[S02] torch", torch.__version__, "| pyg", torch_geometric.__version__,
       "| sklearn", sklearn.__version__, "| rdkit", rdkit.__version__,
       "| cuda", torch.cuda.is_available())

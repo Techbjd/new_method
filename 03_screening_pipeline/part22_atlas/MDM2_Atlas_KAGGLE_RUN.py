@@ -10,7 +10,7 @@ What it does
       00_data/training/ro5_properties_filtered.csv
       00_data/screening/screening_results.csv
       00_data/config/cuts.json
-3. Installs missing packages (torch_geometric, xgboost, lightgbm, catboost).
+3. Installs missing packages (rdkit, torch_geometric, xgboost, lightgbm, catboost).
 4. Runs the full pipeline with SMOKE=0 and DL_EPOCHS=60.
 5. Prints every stage and writes:
       <workdir>/atlas_run.log
@@ -84,31 +84,42 @@ def _download(url: str, dst: str, timeout: int = 300) -> None:
 
 
 def _ensure_packages() -> None:
+    # (pip name, import name) — rdkit is required by the flat pipeline's S02 import.
     packages = [
+        ("rdkit", "rdkit"),
         ("torch_geometric", "torch_geometric"),
         ("xgboost", "xgboost"),
         ("lightgbm", "lightgbm"),
         ("catboost", "catboost"),
     ]
+    missing = []
     for package, module in packages:
         try:
             __import__(module)
             print("OK:", package)
+            continue
         except Exception:
-            print("installing:", package)
-            subprocess.run(
-                [sys.executable, "-m", "pip", "install", "-q", package],
-                check=False,
-            )
+            pass
 
-    importlib.invalidate_caches()
-
-    for package in ("torch_geometric", "xgboost", "lightgbm", "catboost"):
+        print("installing:", package)
+        subprocess.run(
+            [sys.executable, "-m", "pip", "install", "-q", package],
+            check=False,
+        )
+        importlib.invalidate_caches()
         try:
-            __import__(package)
+            __import__(module)
             print("READY:", package)
         except Exception as exc:
             print("MISSING:", package, exc)
+            missing.append(package)
+
+    if missing:
+        raise RuntimeError(
+            "Required packages are still missing after pip install: "
+            + ", ".join(missing)
+            + ". Restart the Kaggle kernel, then rerun this cell."
+        )
 
 
 def _format_metrics(values: dict) -> dict:
