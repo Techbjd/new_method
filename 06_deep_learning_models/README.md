@@ -112,7 +112,11 @@ Full paper lineage is in every notebook's title markdown, chemistry primer and
 deliberately **not** used on 645 compounds (Graphormer, GROVER, Uni-Mol,
 3-D/equivariant models, chemical language models, full GraphGPS) are listed
 with reasons in `MODEL_RESEARCH.md` → *Advanced / data-hungry models —
-reviewed, not used*.
+reviewed, not used*. A second user-supplied list (Chemprop, MoLFormer, SMI-TED,
+ChemBERTa, AttentiveFP; MACE, SchNet, NequIP, TorchANI, FermiNet; REINVENT 4,
+JT-VAE, MoLeR; DeepChem, TorchDrug, DGL-LifeSci) is catalogued in
+`MODEL_RESEARCH.md` → *User-suggested models and toolkits* with status and
+reasons; none of it changes the default 23-model registry.
 
 NB1 additionally offers two optional models: cell 9b runs the REAL deepchem
 `dc.models.GCNModel` (guarded — skipped unless deepchem + tensorflow import;

@@ -160,6 +160,69 @@ addition, **not** a validated performance claim.
   installed here, so the guards raise a clear `NotImplementedError` rather than
   fabricate results. They become runnable when 3-D data arrives.
 
+## User-suggested models and toolkits (2026-11-25) [USER]
+
+The user supplied the list below. It is recorded here with the same
+provenance/feasibility discipline as the rest of this note. **In suite** = code
+already runs in the five notebooks; **sensitivity only** = external weights
+require a label-provenance audit and never decide the reported ranking;
+**not used** = wrong task or data for this 645-compound, 2-D SMILES project, not
+a negative result. None of these entries changes the default 23-model registry
+or adds a performance claim.
+
+### 1) Molecular property prediction — 2-D graphs and SMILES
+
+| Model | Paper / code | Status | Decision |
+|---|---|---|---|
+| Chemprop (D-MPNN) | Yang et al., *JCIM* 2019; Heid et al. (v2), *JCIM* 2024; https://github.com/chemprop/chemprop | **In suite** — `DMPNN` (DL01), edge-aware directed message passing | Full package is an opt-in external baseline; its uncertainty idea is covered by `DL_UNCERTAINTY=1` (ensembles/MC-dropout/conformal). |
+| MoLFormer | Ross et al., *Nat. Mach. Intell.* 2022; https://github.com/IBM/molformer ; HF `ibm/MoLFormer-XL*` | **Sensitivity only** — NB1 cell 10c, `DL_USE_HF=1`, `DL_HF_MODEL=molformer` | Pretrained on >1B SMILES; external weights may have seen bioactivity data → provenance audit, never test-set selection. |
+| SMI-TED | Soares et al., *Communications Chemistry* 2025 (arXiv:2407.20267); code https://github.com/IBM/materials/tree/main/models/smi_ted ; weights HF `ibm-research/materials.smi-ted` | **Not implemented** (new candidate) | 289M / 8×289M encoder-decoder pretrained on 91M PubChem SMILES (4B tokens). Feasible only as an opt-in frozen-encoder sensitivity branch like ChemBERTa/MoLFormer: GPU, ~289M params, weight provenance audit, validation-only fine-tuning on 464/52. The 91M pretraining corpus is not publicly released, so pretraining itself is not reproducible. |
+| ChemBERTa | Liu et al. 2019 lineage; HF `DeepChem/ChemBERTa-77M-MLM` | **Sensitivity only** — NB1 cell 10c default HF model | Same audit rule; see `DL_USE_HF=1`. |
+| Attentive FP | Xiong et al., *J. Med. Chem.* 2020; https://github.com/OpenDrugAI/AttentiveFP | **In suite** — `AttentiveFP` (DL01), uses the 6-dim edge features | Already in the default registry. |
+
+### 2) 3-D quantum chemistry and molecular force fields
+
+Every entry here needs 3-D conformers, coordinates or electronic-structure
+labels that the 645-compound, 2-D SMILES set does not contain. The notebooks
+expose 3-D classes only behind `DL_USE_3D=1` plus `d.pos`; they are not
+registered and raise a clear `NotImplementedError` without coordinates.
+
+| Model | Paper / code | Status | Decision |
+|---|---|---|---|
+| MACE | Batatia et al., *NeurIPS* 2022; https://github.com/ACEsuit/mace | **Not used** | Equivariant higher-order potential for energies/forces; wrong target (pIC50) and no 3-D data. |
+| SchNet | Schütt et al., *NeurIPS* 2017; https://github.com/atomistic-machine-learning/schnetpack | **Reviewed, not used** | Continuous-filter convolutions over 3-D distances; no conformers. |
+| NequIP | Batzner et al., *Nat. Commun.* 2022; https://github.com/mir-group/nequip | **Not used** — 3-D class guard present | E(3)-equivariant interatomic potential; needs coordinates + e3nn. |
+| TorchANI | Gao et al., *JCIM* 2020; https://github.com/aiqm/torchani | **Not used** | ANI potentials predict conformational energies/forces from 3-D geometry, not bioactivity. |
+| FermiNet | Pfau et al., *Phys. Rev. Research* 2020; https://github.com/google-deepmind/ferminet | **Not used** | Many-electron wavefunction / quantum chemistry task, unrelated to ranking existing natural-product libraries. |
+
+### 3) Molecule generation and de novo design
+
+These solve a different problem (proposing new structures) from this project's
+task (ranking the fixed 154,647-compound COCONUT screen). They are future-work
+options, not extra rows for the leaderboard.
+
+| Model | Paper / code | Status | Decision |
+|---|---|---|---|
+| REINVENT 4 | Loeffler et al., *JCIM* 2024; https://github.com/MolecularAI/REINVENT4 | **Not implemented** | RL/transformer de novo design; needs a reward model and a large generative prior. Our calibrated classifier could supply the reward only after external validation. |
+| JT-VAE | Jin et al., *ICML* 2018; https://github.com/wengong-jin/icml18-jtnn | **Not implemented** | Generates graphs through a junction tree of substructures. The ZINC250k corpus used in DL05 is a common JT-VAE benchmark dataset, **not** the JT-VAE model. Would be a separate scaffold-generation arm. |
+| MoLeR | Maziarz et al., *ICLR* 2022; https://github.com/microsoft/molecule-generation | **Not implemented** | Scaffold-conditioned graph generation (TF2/tf2-gnn). Relevant to scaffold hopping, but generated analogs have no experimental labels; AD and synthesis checks required before any claim. |
+
+### 4) All-in-one open-source frameworks
+
+Frameworks are plumbing, not independent evidence; swapping libraries should
+not be reported as a new model result.
+
+| Toolkit | Code | Status | Decision |
+|---|---|---|---|
+| DeepChem | https://github.com/deepchem/deepchem | **Partly in suite** — pure-torch `DeepChemGCN` replica always runs; real `dc.models.GCNModel` is opt-in with `DL_INSTALL_DEEPCHEM=1` (cell 9b, needs TensorFlow) | Preferred lightweight integration; no extra performance claim from the package itself. |
+| TorchDrug | Zhu et al. 2022; https://github.com/DeepGraphLearning/torchdrug | **Not installed** | PyG-adjacent drug-discovery platform; heavy install for no new evidence on 645 rows. |
+| DGL-LifeSci | https://github.com/awslabs/dgl-lifesci | **Not installed** | DGL-based toolkit for property/reaction/generation tasks; would require a separate DGL environment. |
+
+If the paper needs one of these, the only defensible near-term addition is
+**SMI-TED as an opt-in HF sensitivity branch** (same guardrails as ChemBERTa /
+MoLFormer). The 3-D/quantum and generative entries need new data or a new task
+and are listed as future work, never as results on this split.
+
 ## How to validate added models
 
 ```bash
