@@ -1,0 +1,19 @@
+# Core dependencies for DL_01-DL_05 (installed automatically by the notebook
+# setup cell when a module is missing; Kaggle/Colab need Internet enabled).
+# Prefer the torch already present on Kaggle/Colab: reinstalling torch can
+# replace a CUDA build with an incompatible wheel.
+numpy
+scipy
+pandas
+matplotlib
+scikit-learn
+rdkit
+torch
+torch_geometric
+
+# Optional / heavy extras — NOT installed by default. Uncomment only when you
+# need them; each has a notebook flag that installs it on demand as well.
+# transformers          # DL_USE_HF=1 (cell 10c fine-tuning)
+# deepchem              # DL_INSTALL_DEEPCHEM=1 (cell 9b real GCNModel; needs TensorFlow)
+# e3nn                  # DL_USE_3D=1 (also needs conformer coordinates)
+# pytorch-fast-transformers  # SMI-TED fine-tuning via IBM's own scripts

@@ -207,8 +207,10 @@ python3 run_fast.py               # all five; writes fast_logs/ + outputs/*/fast
 ### Portability (no manual setup)
 
 - The setup cell installs missing packages with the **current interpreter**
-  (`python -m pip`): `torch`, `torch_geometric`, `rdkit`, `scikit-learn`,
-  `matplotlib`, `pandas`.
+  (`python -m pip`): `numpy`, `scipy`, `torch`, `torch_geometric`, `rdkit`,
+  `scikit-learn`, `matplotlib`, `pandas`. A static
+  [`requirements.txt`](requirements.txt) mirrors these core packages; heavy
+  extras are commented out there on purpose.
 - Torch is installed from the **CPU wheel index on machines without a working
   `nvidia-smi`**, and from the default PyPI index on GPU machines/macOS; an
   existing torch install is left untouched.
@@ -223,8 +225,19 @@ python3 run_fast.py               # all five; writes fast_logs/ + outputs/*/fast
   notebook settings and Run All.
 - Outputs land in `outputs/dl0X/<profile>/` next to the notebook (in
   `/kaggle/working` on Kaggle).
+- **Screening is ON by default for full runs** (`DL_RUN_SCREENING` defaults to
+  `"1"`). `smoke`/`fast` profiles still skip it by design. To turn screening
+  **off**, put this in the first cell before Run All:
+  ```python
+  import os
+  os.environ["DL_RUN_SCREENING"] = "0"   # 0 = skip the 154k screen, 1 = run it
+  ```
+  For the `run_smoke.py` / `run_fast.py` wrappers use
+  `DL_RUN_SCREENING=0 python3 run_fast.py` instead.
 - Optional extras are **opt-in only**; a missing DeepChem/TensorFlow or
-  Transformers install never stops the notebook.
+  Transformers install never stops the notebook. `DL_USE_HF=1` installs
+  `transformers` in cell 10c and `DL_INSTALL_DEEPCHEM=1` installs `deepchem`
+  in cell 9b; `DL_USE_3D=1` additionally needs `e3nn` plus conformers.
 - The notebooks run on CPU (slow for full mode) or CUDA; no code changes are
   needed when moving between machines.
 

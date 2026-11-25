@@ -45,6 +45,9 @@ def _have(mod):
     except Exception:
         return False
 
+# Screening is ON by default in full runs. To skip the 154k screen, set
+# os.environ["DL_RUN_SCREENING"] = "0" in a cell BEFORE section 15 (or export
+# DL_RUN_SCREENING=0 before run_fast.py); smoke/fast profiles skip it anyway.
 # --- torch: only install when missing; pick CPU wheels for CPU-only machines ---
 if not _have("torch"):
     _has_nvidia = bool(shutil.which("nvidia-smi")) and subprocess.run(
@@ -55,7 +58,13 @@ if not _have("torch"):
         _pip("torch", "--index-url", "https://download.pytorch.org/whl/cpu")
 if not _have("torch_geometric"):
     _pip("torch_geometric")
-for _mod, _pkg in [("rdkit", "rdkit"), ("sklearn", "scikit-learn"),
+# Every core third-party import used by the notebooks is checked here.
+# Heavy/optional packages are deliberately NOT installed by default:
+#   DL_USE_HF=1            -> cell 10c installs transformers on demand
+#   DL_INSTALL_DEEPCHEM=1  -> cell 9b installs deepchem (+ TensorFlow)
+#   DL_USE_3D=1            -> needs e3nn and conformer coordinates
+for _mod, _pkg in [("numpy", "numpy"), ("scipy", "scipy"),
+                   ("rdkit", "rdkit"), ("sklearn", "scikit-learn"),
                    ("matplotlib", "matplotlib"), ("pandas", "pandas")]:
     if not _have(_mod):
         _pip(_pkg)
@@ -1565,7 +1574,9 @@ if USE_HF_PRETRAINED and not SMOKE and DEVICE.type == "cuda":
         HF_CHOICES = {"chemberta": "seyonec/ChemBERTa-zinc-base-v1",
                       "chemberta2": "DeepChem/ChemBERTa-77M-MLM",
                       "chemberta3": "DeepChem/ChemBERTa-100M-MLM",
-                      "molformer": "ibm-research/MoLFormer-XL-both-10pct"}
+                      "molformer": "ibm-research/MoLFormer-XL-both-10pct",
+                      # "smi-ted": "ibm-research/materials.smi-ted",  # listed only: needs IBM's custom loader, not HF AutoModel
+                      }
         HF_KEY = os.environ.get("DL_HF_MODEL", "chemberta")
         HF_NAME = HF_CHOICES.get(HF_KEY, HF_CHOICES["chemberta"])
         _trust = {"molformer": True}.get(HF_KEY, False)   # MoLFormer needs remote code
