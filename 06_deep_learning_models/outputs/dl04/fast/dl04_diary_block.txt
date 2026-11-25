@@ -1,0 +1,19 @@
+### dl04 run record
+- timestamp: 2026-11-22 23:10:44 | task=cls | profile=fast | seed=57
+- device: cpu (GPUs=0) | split 464/52/129
+- baseline (val AUC):
+    - PNA            0.925 (758,846 params, 22.2s)
+    - GraphTransformer 0.8996 (177,410 params, 4.9s)
+    - GPS            0.9235 (342,019 params, 11.6s)
+    - SmilesTransformer 0.8936 (247,010 params, 24.4s)
+    - FTTransformer  0.8516 (100,418 params, 1.5s)
+- fine-tuned configs: {'PNA': {'lr': 0.0005, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}, 'GraphTransformer': {'lr': 0.001, 'dropout': 0.1, 'hidden': None, 'wd': 0.0, 'batch': None}, 'GPS': {'lr': 0.0005, 'dropout': 0.1, 'hidden': None, 'wd': 0.0, 'batch': None}, 'SmilesTransformer': {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}, 'FTTransformer': {'lr': 0.001, 'dropout': 0.1, 'hidden': None, 'wd': 0.0, 'batch': None}}
+- 5-fold CV (mean±std):
+    - PNA            0.8643 ± 0.0104
+    - GPS            0.8609 ± 0.0059
+    - FTTransformer  0.8342 ± 0.007
+    - GraphTransformer 0.8224 ± 0.0426
+    - SmilesTransformer 0.7763 ± 0.1198
+- Y-randomization: [{'model': 'GPS', 'mean': 0.64095, 'std': 0.058336309447890186}, {'model': 'PNA', 'mean': 0.7009, 'std': 0.045537676708413674}]
+- FINAL test (scored once, PNA): {'AUC': 0.9871, 'AP': 0.9752, 'BalAcc': 0.9353} | 95% CI [0.9639, 1.0]
+- artifacts: ['baseline_table.csv', 'cv_table.csv', 'dl04_diary_block.txt', 'dl04_results.json', 'eda.png', 'finetune_table.csv', 'leaderboard.png', 'test_predictions.csv', 'test_roc.png', 'y_randomization_table.csv']

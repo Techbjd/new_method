@@ -1,0 +1,3 @@
+model,cfg_lr,cfg_dropout,cfg_hidden,cfg_wd,cfg_batch,ft_val_AUC,ft_val_AP,ft_val_BalAcc
+GIN (scratch),0.001,,,0.0,,0.7085,0.7775,0.5
+GIN-MolCLR,0.001,0.2,,0.0,,0.8421,0.8959,0.5

@@ -1,0 +1,31 @@
+{
+  "models": [
+    "GCN",
+    "GIN",
+    "GINE"
+  ],
+  "kind": "graph",
+  "ensemble_val": {
+    "AUC": NaN,
+    "AP": 0.0,
+    "BalAcc": 0.0
+  },
+  "mc_dropout": {
+    "val_mean_auc": NaN,
+    "mean_predictive_std": 0.017358746379613876,
+    "draws": 20
+  },
+  "conformal": {
+    "level": 0.9,
+    "width": 0.08804391324520111,
+    "val_coverage": 0.8846153846153846,
+    "note": "validation-calibrated; test split not re-scored"
+  },
+  "evidential_proxy": {
+    "spearman_std_vs_abs_error": -0.2843848715102877
+  },
+  "multitask": {
+    "val_cls_auc": 0.3943028485757122,
+    "val_reg_rmse": 1.6569228461105208
+  }
+}

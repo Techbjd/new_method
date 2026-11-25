@@ -1,0 +1,159 @@
+{
+  "nb": "dl04",
+  "task": "cls",
+  "smoke": false,
+  "fast": true,
+  "profile": "fast",
+  "seed": 57,
+  "timestamp": "2026-11-22 23:10:44",
+  "device": "cpu",
+  "n_gpus": 0,
+  "split_sizes": {
+    "train": 464,
+    "val": 52,
+    "test": 129
+  },
+  "models": [
+    "FTTransformer",
+    "GPS",
+    "GraphTransformer",
+    "PNA",
+    "SmilesTransformer"
+  ],
+  "baseline": [
+    {
+      "model": "PNA",
+      "val_AUC": 0.925,
+      "val_AP": 0.9328,
+      "val_BalAcc": 0.8613,
+      "params": 758846,
+      "epochs_run": 8,
+      "sec": 22.2
+    },
+    {
+      "model": "GraphTransformer",
+      "val_AUC": 0.8996,
+      "val_AP": 0.8861,
+      "val_BalAcc": 0.8141,
+      "params": 177410,
+      "epochs_run": 8,
+      "sec": 4.9
+    },
+    {
+      "model": "GPS",
+      "val_AUC": 0.9235,
+      "val_AP": 0.9276,
+      "val_BalAcc": 0.8486,
+      "params": 342019,
+      "epochs_run": 8,
+      "sec": 11.6
+    },
+    {
+      "model": "SmilesTransformer",
+      "val_AUC": 0.8936,
+      "val_AP": 0.8952,
+      "val_BalAcc": 0.8313,
+      "params": 247010,
+      "epochs_run": 8,
+      "sec": 24.4
+    },
+    {
+      "model": "FTTransformer",
+      "val_AUC": 0.8516,
+      "val_AP": 0.8205,
+      "val_BalAcc": 0.8096,
+      "params": 100418,
+      "epochs_run": 8,
+      "sec": 1.5
+    }
+  ],
+  "finetune_cfg": {
+    "PNA": {
+      "lr": 0.0005,
+      "dropout": null,
+      "hidden": null,
+      "wd": 0.0,
+      "batch": null
+    },
+    "GraphTransformer": {
+      "lr": 0.001,
+      "dropout": 0.1,
+      "hidden": null,
+      "wd": 0.0,
+      "batch": null
+    },
+    "GPS": {
+      "lr": 0.0005,
+      "dropout": 0.1,
+      "hidden": null,
+      "wd": 0.0,
+      "batch": null
+    },
+    "SmilesTransformer": {
+      "lr": 0.001,
+      "dropout": null,
+      "hidden": null,
+      "wd": 0.0,
+      "batch": null
+    },
+    "FTTransformer": {
+      "lr": 0.001,
+      "dropout": 0.1,
+      "hidden": null,
+      "wd": 0.0,
+      "batch": null
+    }
+  },
+  "cv": [
+    {
+      "model": "PNA",
+      "folds": 2,
+      "cv_AUC_mean": 0.8643,
+      "cv_AUC_std": 0.0104
+    },
+    {
+      "model": "GraphTransformer",
+      "folds": 2,
+      "cv_AUC_mean": 0.8224,
+      "cv_AUC_std": 0.0426
+    },
+    {
+      "model": "GPS",
+      "folds": 2,
+      "cv_AUC_mean": 0.8609,
+      "cv_AUC_std": 0.0059
+    },
+    {
+      "model": "SmilesTransformer",
+      "folds": 2,
+      "cv_AUC_mean": 0.7763,
+      "cv_AUC_std": 0.1198
+    },
+    {
+      "model": "FTTransformer",
+      "folds": 2,
+      "cv_AUC_mean": 0.8342,
+      "cv_AUC_std": 0.007
+    }
+  ],
+  "yrand_mean": {
+    "GPS": {
+      "mean": 0.641,
+      "std": 0.0583
+    },
+    "PNA": {
+      "mean": 0.7009,
+      "std": 0.0455
+    }
+  },
+  "final_model": "PNA",
+  "test_metrics": {
+    "AUC": 0.9871,
+    "AP": 0.9752,
+    "BalAcc": 0.9353
+  },
+  "test_ci": [
+    0.9639,
+    1.0
+  ]
+}

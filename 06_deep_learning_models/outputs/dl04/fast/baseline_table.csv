@@ -1,0 +1,6 @@
+model,val_AUC,val_AP,val_BalAcc,params,epochs_run,sec
+PNA,0.925,0.9328,0.8613,758846,8,22.2
+GPS,0.9235,0.9276,0.8486,342019,8,11.6
+GraphTransformer,0.8996,0.8861,0.8141,177410,8,4.9
+SmilesTransformer,0.8936,0.8952,0.8313,247010,8,24.4
+FTTransformer,0.8516,0.8205,0.8096,100418,8,1.5

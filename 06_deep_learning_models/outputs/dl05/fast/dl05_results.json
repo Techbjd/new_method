@@ -1,0 +1,90 @@
+{
+  "nb": "dl05",
+  "task": "cls",
+  "smoke": false,
+  "fast": true,
+  "profile": "fast",
+  "seed": 57,
+  "timestamp": "2026-11-22 23:12:15",
+  "device": "cpu",
+  "n_gpus": 0,
+  "split_sizes": {
+    "train": 464,
+    "val": 52,
+    "test": 129
+  },
+  "models": [
+    "GIN (scratch)",
+    "GIN-MolCLR"
+  ],
+  "baseline": [
+    {
+      "model": "GIN (scratch)",
+      "val_AUC": 0.9535,
+      "val_AP": 0.9586,
+      "val_BalAcc": 0.8831,
+      "params": 77061,
+      "epochs_run": 8,
+      "sec": 2.4
+    },
+    {
+      "model": "GIN-MolCLR",
+      "val_AUC": 0.952,
+      "val_AP": 0.9586,
+      "val_BalAcc": 0.8613,
+      "params": 77061,
+      "epochs_run": 8,
+      "sec": 2.1
+    }
+  ],
+  "finetune_cfg": {
+    "GIN (scratch)": {
+      "lr": 0.0005,
+      "dropout": 0.1,
+      "hidden": null,
+      "wd": 0.0,
+      "batch": null
+    },
+    "GIN-MolCLR": {
+      "lr": 0.001,
+      "dropout": null,
+      "hidden": null,
+      "wd": 0.0,
+      "batch": null
+    }
+  },
+  "cv": [
+    {
+      "model": "GIN (scratch)",
+      "folds": 2,
+      "cv_AUC_mean": 0.8677,
+      "cv_AUC_std": 0.0007
+    },
+    {
+      "model": "GIN-MolCLR",
+      "folds": 2,
+      "cv_AUC_mean": 0.8724,
+      "cv_AUC_std": 0.0102
+    }
+  ],
+  "yrand_mean": {
+    "GIN (scratch)": {
+      "mean": 0.6402,
+      "std": 0.0721
+    },
+    "GIN-MolCLR": {
+      "mean": 0.6019,
+      "std": 0.1114
+    }
+  },
+  "final_model": "GIN-MolCLR",
+  "test_metrics": {
+    "AUC": 0.9981,
+    "AP": 0.9972,
+    "BalAcc": 0.8766
+  },
+  "test_ci": [
+    0.9941,
+    1.0
+  ]
+}

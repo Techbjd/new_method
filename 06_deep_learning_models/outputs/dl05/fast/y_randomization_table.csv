@@ -1,0 +1,5 @@
+model,shuffle,shuf_AUC,shuf_AP,shuf_BalAcc
+GIN-MolCLR,1,0.5232,0.5709,0.5615
+GIN-MolCLR,2,0.6807,0.7151,0.5
+GIN (scratch),1,0.5892,0.5892,0.5
+GIN (scratch),2,0.6912,0.7368,0.5

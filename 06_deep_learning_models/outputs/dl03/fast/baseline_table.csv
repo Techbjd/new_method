@@ -1,0 +1,6 @@
+model,val_AUC,val_AP,val_BalAcc,params,epochs_run,sec
+ResidualMlp,0.9715,0.9807,0.8958,1666050,8,1.4
+FPMlpDeep,0.97,0.9739,0.9175,832258,8,0.7
+HybridGCNFp,0.9505,0.9531,0.8876,98434,8,1.9
+FPMlpShallow,0.937,0.9303,0.8958,88066,7,0.3
+FingerPrintCNN,0.8561,0.8602,0.8186,152514,8,1.0

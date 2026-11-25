@@ -1,0 +1,3 @@
+model,val_AUC,val_AP,val_BalAcc,params,epochs_run,sec
+GIN (scratch),0.9535,0.9586,0.8831,77061,8,2.4
+GIN-MolCLR,0.952,0.9586,0.8613,77061,8,2.1

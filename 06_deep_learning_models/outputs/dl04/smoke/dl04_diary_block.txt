@@ -1,0 +1,17 @@
+### dl04 run record
+- timestamp: 2026-11-24 07:44:07 | task=cls | profile=smoke | seed=57
+- device: cpu (GPUs=0) | split 464/52/129
+- baseline (val AUC):
+    - PNA            0.6356 (758,846 params, 1.3s)
+    - GraphTransformer 0.7814 (177,410 params, 0.3s)
+    - GPS            0.834 (342,019 params, 0.8s)
+    - SmilesTransformer 0.7773 (247,010 params, 1.4s)
+    - FTTransformer  0.8421 (100,418 params, 0.1s)
+- fine-tuned configs: {'PNA': {'lr': 0.001, 'dropout': 0.2, 'hidden': None, 'wd': 0.0, 'batch': None}, 'GraphTransformer': {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}, 'GPS': {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}, 'SmilesTransformer': {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}, 'FTTransformer': {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}}
+- 5-fold CV (mean±std):
+    - GPS            0.8122 ± 0.1357
+    - GraphTransformer 0.5642 ± 0.1858
+    - PNA            0.5148 ± 0.0893
+- Y-randomization: [{'model': 'PNA', 'mean': 0.6194500000000001, 'std': 0.06300321420372139}]
+- FINAL test (scored once, GPS): {'AUC': 0.8667, 'AP': 0.95, 'BalAcc': 0.5} | 95% CI [0.6361, 1.0]
+- artifacts: ['baseline_table.csv', 'cv_table.csv', 'dl04_diary_block.txt', 'dl04_results.json', 'eda.png', 'finetune_table.csv', 'leaderboard.png', 'test_predictions.csv', 'test_roc.png', 'y_randomization_table.csv']

@@ -1,0 +1,27 @@
+{
+  "models": [
+    "GIN (scratch)",
+    "GIN-MolCLR",
+    "ChebNet"
+  ],
+  "kind": "graph",
+  "ensemble_val": {
+    "AUC": NaN,
+    "AP": 0.0,
+    "BalAcc": 0.0
+  },
+  "mc_dropout": {
+    "val_mean_auc": NaN,
+    "mean_predictive_std": 0.007668617647141218,
+    "draws": 20
+  },
+  "conformal": {
+    "level": 0.9,
+    "width": 0.10566025972366333,
+    "val_coverage": 0.8846153846153846,
+    "note": "validation-calibrated; test split not re-scored"
+  },
+  "evidential_proxy": {
+    "spearman_std_vs_abs_error": 0.05771365149833518
+  }
+}

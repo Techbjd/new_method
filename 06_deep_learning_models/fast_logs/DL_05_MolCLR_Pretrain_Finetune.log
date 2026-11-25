@@ -1,0 +1,89 @@
+[setup] environment ready — python 3.13.9 | torch 2.13.0+cpu | CPU | 8 cpu threads
+[seed] RANDOM_SEED=57 | profile=fast | TASK=cls | primary metric=AUC | outputs -> outputs/dl05/fast
+[S04] no CUDA — CPU mode (8 threads, python 3.13.9)
+[S05] loaded: ../00_data/training/ro5_properties_filtered.csv
+[S05] 645 compounds | Active 343 / Inactive 302 | pIC50 3.60-10.23
+[S05] source: ChEMBL MDM2-p53 bioactivity -> 2,571 raw records -> 1,933 unique compounds -> 645 after Lipinski-RO5 filtering (Arjun sir pipeline, Part_2)
+[S05] columns: molecule_chembl_id | canonical_smiles | bioactivity_class (Active/Inactive) | pIC50 = -log10(IC50 M) | MW / HBA / HBD / logP | ro5_fulfilled
+[S05] labels: 1 = Active, 0 = Inactive -> every classifier outputs softmax probabilities (prob_class_1 = P(Active), same schema as screening_results.csv)
+<Figure size 1500x400 with 3 Axes>
+[S06] unique Murcko scaffolds: 204 | INVALID: 0
+[S06] split: train 464 | val 52 | test 129 | Active tr/va/te = 262/29/52 | scaffold overlap train-test = 0 | test Murcko scaffolds=5 largest=[(np.str_('O=C1c2ccccc2C(c2ccccc2)N1Cc1ccccc1'), 40), (np.str_('c1ccc(C(Nc2ccccn2)c2ccc3cccnc3c2)cc1'), 34), (np.str_('O=C1c2nn(-c3cncnc3)cc2C(c2ccccc2)N1c1ccc[nH]c1=O'), 31)] | test scored ONCE (section 13)
+[S06][WARN] test set has very few Murcko scaffolds; high holdout AUC may reflect scaffold/series separation, not prospective molecule-level performance.
+[S06] graphs built: 645 (78-dim atoms, 6-dim bonds, both directions)
+[S07] Tier-2 registry: GIN (scratch), GIN-MolCLR
+[S07b] downloading pretraining corpus: https://deepchemdata.s3-us-west-1.amazonaws.com/datasets/250k_rndm_zinc_drugs_clean_3.csv
+[S07b] download failed: HTTP Error 403: Forbidden
+[S07b] downloading pretraining corpus: https://raw.githubusercontent.com/aspuru-guzik-group/chemical_vae/master/models/zinc_properties/250k_rndm_zinc_drugs_clean_3.csv
+[S07b] cached -> outputs/dl05/fast/pretrain_cache/250k_rndm_zinc_drugs_clean_3.csv (22.6 MB)
+[S07b] pretrain source: zinc250k | ZINC250k (250k drug-like molecules, standard open-source MolCLR/JT-VAE benchmark; no labels)
+[S07b] loaded 249,455 SMILES from outputs/dl05/fast/pretrain_cache/250k_rndm_zinc_drugs_clean_3.csv (col=smiles)
+[S07b] source=zinc250k rows 249,455 | pretraining on 4,000 molecules (3 epochs, batch 64, no labels used)
+[S07b]   epoch 1 batch 50 | running NT-Xent 2.5295
+[S07b] epoch 1/3 NT-Xent 2.4219 (63 batches)
+[S07b]   epoch 2 batch 50 | running NT-Xent 1.8969
+[S07b] epoch 2/3 NT-Xent 1.8721 (63 batches)
+[S07b]   epoch 3 batch 50 | running NT-Xent 1.7497
+[S07b] epoch 3/3 NT-Xent 1.7329 (63 batches)
+[S07b] saved 24 trunk tensors -> molclr_gin_pretrain.pt | 'GIN-MolCLR' warm-starts from them (head stays fresh, source=zinc250k)
+[S08] engine ready | epochs=8 patience=4 | batch graph=64 array=128 | AMP=False | clip=5.0
+      [GIN (scratch)] ep   1 loss 0.5907 val AUC 0.8756
+      [GIN (scratch)] ep   8 loss 0.3016 val AUC 0.9535
+[S09] GIN (scratch)  val {'AUC': 0.9535, 'AP': 0.9586, 'BalAcc': 0.8831} | 77,061 params | 8 ep | 2.4s
+      [GIN-MolCLR] warm-started 24/24 tensors from MolCLR pretrain (zinc250k)
+      [GIN-MolCLR] ep   1 loss 0.6258 val AUC 0.8546
+      [GIN-MolCLR] ep   8 loss 0.2889 val AUC 0.9520
+[S09] GIN-MolCLR     val {'AUC': 0.952, 'AP': 0.9586, 'BalAcc': 0.8613} | 77,061 params | 8 ep | 2.1s
+           model  val_AUC  val_AP  val_BalAcc  params  epochs_run  sec
+0  GIN (scratch)   0.9535  0.9586      0.8831   77061           8  2.4
+1     GIN-MolCLR   0.9520  0.9586      0.8613   77061           8  2.1
+[S10] fine-tuning GIN (scratch) (stage ladder)
+   stage A lr: {'lr': 0.0005} -> val AUC 0.9385
+   stage B dropout/wd: {'dropout': 0.1, 'wd': 0.0} -> val AUC 0.9400
+   stage C capacity: no improvement, keeping {'lr': 0.0005, 'dropout': 0.1, 'hidden': None, 'wd': 0.0, 'batch': None}
+   stage D batch: no improvement, keeping {'lr': 0.0005, 'dropout': 0.1, 'hidden': None, 'wd': 0.0, 'batch': None}
+[S10] GIN (scratch) tuned {'lr': 0.0005, 'dropout': 0.1, 'hidden': None, 'wd': 0.0, 'batch': None} -> val {'AUC': 0.9505, 'AP': 0.9581, 'BalAcc': 0.9175}
+[S10] fine-tuning GIN-MolCLR (stage ladder)
+   stage A lr: {'lr': 0.001} -> val AUC 0.9445
+   stage B dropout/wd: no improvement, keeping {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}
+   stage C capacity: no improvement, keeping {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}
+   stage D batch: no improvement, keeping {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}
+[S10] GIN-MolCLR tuned {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None} -> val {'AUC': 0.952, 'AP': 0.9586, 'BalAcc': 0.8613}
+           model  cfg_lr  cfg_dropout cfg_hidden  cfg_wd cfg_batch  \
+0  GIN (scratch)  0.0005          0.1       None     0.0      None   
+1     GIN-MolCLR  0.0010          NaN       None     0.0      None   
+
+   ft_val_AUC  ft_val_AP  ft_val_BalAcc  
+0      0.9505     0.9581         0.9175  
+1      0.9520     0.9586         0.8613  
+[S10b] stage1a.pt not found -> D-MPNN trains from scratch (hook is optional)
+[S11] fold val sizes: [258, 258]
+[S11] CV mean±std (validation folds only — test still untouched)
+           model  folds  cv_AUC_mean  cv_AUC_std
+0     GIN-MolCLR      2       0.8724      0.0102
+1  GIN (scratch)      2       0.8677      0.0007
+[S12] Y-randomization: 2 shuffles x 8 epochs per model (higher-than-chance real AUC = the labels carry real signal)
+           model     mean       std
+0  GIN (scratch)  0.64020  0.072125
+1     GIN-MolCLR  0.60195  0.111369
+[S13] final model family: GIN-MolCLR | cfg {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}
+[S13] TEST (once): {'AUC': 0.9981, 'AP': 0.9972, 'BalAcc': 0.8766} | AUC 95% CI [0.9941, 1.0000] over 300/300 valid bootstrap resamples
+[S13] test_predictions.csv: prediction + softmax prob_class_1/prob_class_0 (same schema as screening_results.csv)
+[S13] saved outputs/dl05/fast/test_predictions.csv (129 rows)
+<Figure size 500x400 with 1 Axes>
+<Figure size 800x300 with 1 Axes>
+[S14] artifacts written: ['baseline_table.csv', 'cv_table.csv', 'dl05_diary_block.txt', 'dl05_results.json', 'eda.png', 'finetune_table.csv', 'leaderboard.png', 'molclr_gin_pretrain.pt', 'pretrain_cache', 'test_predictions.csv', 'test_roc.png', 'y_randomization_table.csv']
+[S15] skipped (RUN_SCREENING=False, SMOKE=False, FAST=True; set DL_RUN_SCREENING=1 for the full 154k screen)
+### dl05 run record
+- timestamp: 2026-11-22 23:12:15 | task=cls | profile=fast | seed=57
+- device: cpu (GPUs=0) | split 464/52/129
+- baseline (val AUC):
+    - GIN (scratch)  0.9535 (77,061 params, 2.4s)
+    - GIN-MolCLR     0.952 (77,061 params, 2.1s)
+- fine-tuned configs: {'GIN (scratch)': {'lr': 0.0005, 'dropout': 0.1, 'hidden': None, 'wd': 0.0, 'batch': None}, 'GIN-MolCLR': {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}}
+- 5-fold CV (mean±std):
+    - GIN-MolCLR     0.8724 ± 0.0102
+    - GIN (scratch)  0.8677 ± 0.0007
+- Y-randomization: [{'model': 'GIN (scratch)', 'mean': 0.6402, 'std': 0.07212489168102791}, {'model': 'GIN-MolCLR', 'mean': 0.60195, 'std': 0.11136931803688122}]
+- FINAL test (scored once, GIN-MolCLR): {'AUC': 0.9981, 'AP': 0.9972, 'BalAcc': 0.8766} | 95% CI [0.9941, 1.0]
+- artifacts: ['baseline_table.csv', 'cv_table.csv', 'dl05_diary_block.txt', 'dl05_results.json', 'eda.png', 'finetune_table.csv', 'leaderboard.png', 'molclr_gin_pretrain.pt', 'pretrain_cache', 'test_predictions.csv', 'test_roc.png', 'y_randomization_table.csv']

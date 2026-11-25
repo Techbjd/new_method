@@ -1,0 +1,13 @@
+### dl05 run record
+- timestamp: 2026-11-24 07:44:25 | task=cls | profile=smoke | seed=57
+- device: cpu (GPUs=0) | split 464/52/129
+- baseline (val AUC):
+    - GIN (scratch)  0.7085 (77,061 params, 0.2s)
+    - GIN-MolCLR     0.83 (77,061 params, 0.1s)
+- fine-tuned configs: {'GIN (scratch)': {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}, 'GIN-MolCLR': {'lr': 0.001, 'dropout': 0.2, 'hidden': None, 'wd': 0.0, 'batch': None}}
+- 5-fold CV (mean±std):
+    - GIN-MolCLR     0.7072 ± 0.1053
+    - GIN (scratch)  0.6322 ± 0.0969
+- Y-randomization: [{'model': 'GIN (scratch)', 'mean': 0.55265, 'std': 0.008555992052357225}]
+- FINAL test (scored once, GIN-MolCLR): {'AUC': 0.9037, 'AP': 0.9438, 'BalAcc': 0.5} | 95% CI [0.7568, 1.0]
+- artifacts: ['baseline_table.csv', 'cv_table.csv', 'dl05_diary_block.txt', 'dl05_results.json', 'eda.png', 'finetune_table.csv', 'graphcl_gin_pretrain.pt', 'leaderboard.png', 'molclr_gin_pretrain.pt', 'pretrain_cache', 'test_predictions.csv', 'test_roc.png', 'uncertainty.json', 'y_randomization_table.csv']

@@ -1,0 +1,174 @@
+{
+  "caveats": [
+    "Outer-fold metrics are computed on train+val scaffolds only; no test compound or test label entered any fit or selection step.",
+    "Non-selected models are evaluated on outer folds for diagnostics only; that information was NOT used to choose a final model.",
+    "Train and val share scaffolds in the official split (see split_used); GroupKFold is used throughout CV to avoid scaffold leakage inside folds.",
+    "No calibration, no external validation, no hit validation is claimed."
+  ],
+  "data_scope": "516 train+val compounds only; official 129-compound test set untouched",
+  "date": "2026-11-23",
+  "n_fold_rows": 45,
+  "per_model_all_outer_folds": {
+    "descriptor_logreg": {
+      "AP": {
+        "mean": 0.8535072,
+        "n": 15,
+        "std": 0.10183458665188365
+      },
+      "AUC": {
+        "mean": 0.8525005999999998,
+        "n": 15,
+        "std": 0.053265128233269704
+      },
+      "BalAcc": {
+        "mean": 0.7721118666666666,
+        "n": 15,
+        "std": 0.0577485040174106
+      },
+      "MCC": {
+        "mean": 0.5404225333333333,
+        "n": 15,
+        "std": 0.10773869891106394
+      }
+    },
+    "ecfp_logreg": {
+      "AP": {
+        "mean": 0.8870142666666668,
+        "n": 15,
+        "std": 0.06346646176941716
+      },
+      "AUC": {
+        "mean": 0.9015799333333334,
+        "n": 15,
+        "std": 0.03602261342632182
+      },
+      "BalAcc": {
+        "mean": 0.8288462666666666,
+        "n": 15,
+        "std": 0.06431708148485042
+      },
+      "MCC": {
+        "mean": 0.6557866,
+        "n": 15,
+        "std": 0.1275203138451805
+      }
+    },
+    "ecfp_random_forest": {
+      "AP": {
+        "mean": 0.9056357333333336,
+        "n": 15,
+        "std": 0.047901840807310206
+      },
+      "AUC": {
+        "mean": 0.9157901333333333,
+        "n": 15,
+        "std": 0.03379289708773461
+      },
+      "BalAcc": {
+        "mean": 0.8420445333333334,
+        "n": 15,
+        "std": 0.047952242076002606
+      },
+      "MCC": {
+        "mean": 0.6809284666666666,
+        "n": 15,
+        "std": 0.10815456708610238
+      }
+    }
+  },
+  "protocol": {
+    "descriptors": [
+      "MW",
+      "LogP",
+      "TPSA",
+      "HBD",
+      "HBA",
+      "RotB",
+      "Rings",
+      "AromRings",
+      "HeavyAtoms",
+      "FracCsp3",
+      "MolMR"
+    ],
+    "ecfp": "Morgan ECFP4 radius=2, nBits=2048 (RDKit)",
+    "inner": "GroupKFold by Murcko scaffold, 3 folds; hyperparameter and probability-threshold selection from inner OOF AUC (tie: AP) only",
+    "models": [
+      "ecfp_logreg",
+      "ecfp_random_forest",
+      "descriptor_logreg"
+    ],
+    "outer": "GroupKFold by Murcko scaffold, 5 folds x 3 seeded repeats (seeds 57,58,59; scaffold-label permutation keeps folds disjoint)",
+    "rf": "150 trees, sqrt features, balanced_subsample, random_state=57, n_jobs=2",
+    "threshold_grid": "0.05..0.95 step 0.01, maximise inner-OOF balanced accuracy"
+  },
+  "runtime_seconds": 43.9,
+  "selected_model_across_outer_folds": {
+    "ecfp_logreg": {
+      "AP": {
+        "mean": 0.9399235,
+        "n": 2,
+        "std": 0.004180500000000031
+      },
+      "AUC": {
+        "mean": 0.9226300000000001,
+        "n": 2,
+        "std": 0.007621999999999962
+      },
+      "BalAcc": {
+        "mean": 0.825177,
+        "n": 2,
+        "std": 0.007806000000000035
+      },
+      "MCC": {
+        "mean": 0.656283,
+        "n": 2,
+        "std": 0.016649999999999998
+      }
+    },
+    "ecfp_random_forest": {
+      "AP": {
+        "mean": 0.8985350000000001,
+        "n": 13,
+        "std": 0.047209946225508295
+      },
+      "AUC": {
+        "mean": 0.9144296923076922,
+        "n": 13,
+        "std": 0.03518833248805548
+      },
+      "BalAcc": {
+        "mean": 0.8380304615384616,
+        "n": 13,
+        "std": 0.050092181535822046
+      },
+      "MCC": {
+        "mean": 0.6702426153846155,
+        "n": 13,
+        "std": 0.11166079364722871
+      }
+    }
+  },
+  "selection_counts_inner_only": {
+    "ecfp_logreg": 2,
+    "ecfp_random_forest": 13
+  },
+  "split_used": {
+    "algorithm": "build_notebooks.py SPLIT_SRC (seed 57), replicated verbatim",
+    "n_actives_train_val_test": [
+      262,
+      29,
+      52
+    ],
+    "n_test": 129,
+    "n_total": 645,
+    "n_train": 464,
+    "n_val": 52,
+    "scaffold_overlap_train_test": 0,
+    "scaffold_overlap_train_val": 30,
+    "scaffold_overlap_val_test": 0,
+    "source_csv": "00_data/training/ro5_properties_filtered.csv",
+    "train_val_pool_for_cv": 516,
+    "unique_murcko_scaffolds": 204
+  },
+  "status": "SANITY CHECK ONLY - fast AUCs are not validation of hits"
+}

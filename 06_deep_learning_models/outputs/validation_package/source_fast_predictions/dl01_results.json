@@ -1,0 +1,343 @@
+{
+  "nb": "dl01",
+  "task": "cls",
+  "smoke": false,
+  "fast": true,
+  "profile": "fast",
+  "seed": 57,
+  "timestamp": "2026-11-22 22:58:07",
+  "device": "cpu",
+  "n_gpus": 0,
+  "split_sizes": {
+    "train": 464,
+    "val": 52,
+    "test": 129
+  },
+  "models": [
+    "AttentiveFP",
+    "D-MPNN",
+    "DeepChemGCN",
+    "DescriptorMLP",
+    "GAT",
+    "GATv2",
+    "GCN",
+    "GIN",
+    "GINE",
+    "GatedGCN",
+    "GraphSAGE",
+    "HybridGCNGAT",
+    "SmilesCNN"
+  ],
+  "baseline": [
+    {
+      "model": "DescriptorMLP",
+      "val_AUC": 0.8951,
+      "val_AP": 0.8598,
+      "val_BalAcc": 0.8441,
+      "params": 18690,
+      "epochs_run": 8,
+      "sec": 0.2
+    },
+    {
+      "model": "SmilesCNN",
+      "val_AUC": 0.919,
+      "val_AP": 0.8888,
+      "val_BalAcc": 0.8831,
+      "params": 217154,
+      "epochs_run": 8,
+      "sec": 4.7
+    },
+    {
+      "model": "GCN",
+      "val_AUC": 0.9415,
+      "val_AP": 0.9397,
+      "val_BalAcc": 0.8531,
+      "params": 60482,
+      "epochs_run": 8,
+      "sec": 3.4
+    },
+    {
+      "model": "GIN",
+      "val_AUC": 0.9535,
+      "val_AP": 0.9586,
+      "val_BalAcc": 0.8831,
+      "params": 77061,
+      "epochs_run": 8,
+      "sec": 2.1
+    },
+    {
+      "model": "GINE",
+      "val_AUC": 0.9505,
+      "val_AP": 0.9541,
+      "val_BalAcc": 0.8958,
+      "params": 79399,
+      "epochs_run": 8,
+      "sec": 3.1
+    },
+    {
+      "model": "GAT",
+      "val_AUC": 0.946,
+      "val_AP": 0.9457,
+      "val_BalAcc": 0.8531,
+      "params": 372930,
+      "epochs_run": 8,
+      "sec": 11.4
+    },
+    {
+      "model": "GATv2",
+      "val_AUC": 0.943,
+      "val_AP": 0.9425,
+      "val_BalAcc": 0.8531,
+      "params": 676034,
+      "epochs_run": 8,
+      "sec": 18.5
+    },
+    {
+      "model": "GraphSAGE",
+      "val_AUC": 0.934,
+      "val_AP": 0.9363,
+      "val_BalAcc": 0.8703,
+      "params": 103234,
+      "epochs_run": 8,
+      "sec": 2.9
+    },
+    {
+      "model": "GatedGCN",
+      "val_AUC": 0.9385,
+      "val_AP": 0.9391,
+      "val_BalAcc": 0.9003,
+      "params": 196802,
+      "epochs_run": 8,
+      "sec": 8.3
+    },
+    {
+      "model": "HybridGCNGAT",
+      "val_AUC": 0.9325,
+      "val_AP": 0.9201,
+      "val_BalAcc": 0.8486,
+      "params": 200834,
+      "epochs_run": 8,
+      "sec": 9.4
+    },
+    {
+      "model": "AttentiveFP",
+      "val_AUC": 0.913,
+      "val_AP": 0.9198,
+      "val_BalAcc": 0.8441,
+      "params": 490882,
+      "epochs_run": 8,
+      "sec": 11.2
+    },
+    {
+      "model": "D-MPNN",
+      "val_AUC": 0.9085,
+      "val_AP": 0.9163,
+      "val_BalAcc": 0.8178,
+      "params": 60482,
+      "epochs_run": 8,
+      "sec": 6.5
+    },
+    {
+      "model": "DeepChemGCN",
+      "val_AUC": 0.9415,
+      "val_AP": 0.9406,
+      "val_BalAcc": 0.8831,
+      "params": 136130,
+      "epochs_run": 8,
+      "sec": 2.2
+    }
+  ],
+  "finetune_cfg": {
+    "DescriptorMLP": {
+      "lr": 0.001,
+      "dropout": null,
+      "hidden": null,
+      "wd": 0.0,
+      "batch": null
+    },
+    "SmilesCNN": {
+      "lr": 0.0005,
+      "dropout": null,
+      "hidden": null,
+      "wd": 0.0,
+      "batch": null
+    },
+    "GCN": {
+      "lr": 0.001,
+      "dropout": 0.1,
+      "hidden": null,
+      "wd": 0.0,
+      "batch": null
+    },
+    "GIN": {
+      "lr": 0.0005,
+      "dropout": 0.1,
+      "hidden": null,
+      "wd": 0.0,
+      "batch": null
+    },
+    "GINE": {
+      "lr": 0.001,
+      "dropout": null,
+      "hidden": null,
+      "wd": 0.0,
+      "batch": null
+    },
+    "GAT": {
+      "lr": 0.001,
+      "dropout": 0.1,
+      "hidden": null,
+      "wd": 0.0,
+      "batch": null
+    },
+    "GATv2": {
+      "lr": 0.0005,
+      "dropout": 0.1,
+      "hidden": null,
+      "wd": 0.0,
+      "batch": null
+    },
+    "GraphSAGE": {
+      "lr": 0.001,
+      "dropout": 0.1,
+      "hidden": 64,
+      "wd": 0.0,
+      "batch": null
+    },
+    "GatedGCN": {
+      "lr": 0.001,
+      "dropout": null,
+      "hidden": null,
+      "wd": 0.0,
+      "batch": null
+    },
+    "HybridGCNGAT": {
+      "lr": 0.001,
+      "dropout": null,
+      "hidden": null,
+      "wd": 0.0,
+      "batch": null
+    },
+    "AttentiveFP": {
+      "lr": 0.001,
+      "dropout": 0.1,
+      "hidden": 64,
+      "wd": 0.0,
+      "batch": null
+    },
+    "D-MPNN": {
+      "lr": 0.001,
+      "dropout": 0.3,
+      "hidden": null,
+      "wd": 0.0,
+      "batch": null
+    },
+    "DeepChemGCN": {
+      "lr": 0.0005,
+      "dropout": null,
+      "hidden": null,
+      "wd": 0.0,
+      "batch": null
+    }
+  },
+  "cv": [
+    {
+      "model": "DescriptorMLP",
+      "folds": 2,
+      "cv_AUC_mean": 0.8346,
+      "cv_AUC_std": 0.0019
+    },
+    {
+      "model": "SmilesCNN",
+      "folds": 2,
+      "cv_AUC_mean": 0.8673,
+      "cv_AUC_std": 0.0085
+    },
+    {
+      "model": "GCN",
+      "folds": 2,
+      "cv_AUC_mean": 0.8604,
+      "cv_AUC_std": 0.0078
+    },
+    {
+      "model": "GIN",
+      "folds": 2,
+      "cv_AUC_mean": 0.8677,
+      "cv_AUC_std": 0.0007
+    },
+    {
+      "model": "GINE",
+      "folds": 2,
+      "cv_AUC_mean": 0.8584,
+      "cv_AUC_std": 0.0193
+    },
+    {
+      "model": "GAT",
+      "folds": 2,
+      "cv_AUC_mean": 0.8549,
+      "cv_AUC_std": 0.0058
+    },
+    {
+      "model": "GATv2",
+      "folds": 2,
+      "cv_AUC_mean": 0.8498,
+      "cv_AUC_std": 0.0221
+    },
+    {
+      "model": "GraphSAGE",
+      "folds": 2,
+      "cv_AUC_mean": 0.8545,
+      "cv_AUC_std": 0.0012
+    },
+    {
+      "model": "GatedGCN",
+      "folds": 2,
+      "cv_AUC_mean": 0.8762,
+      "cv_AUC_std": 0.0102
+    },
+    {
+      "model": "HybridGCNGAT",
+      "folds": 2,
+      "cv_AUC_mean": 0.8477,
+      "cv_AUC_std": 0.0226
+    },
+    {
+      "model": "AttentiveFP",
+      "folds": 2,
+      "cv_AUC_mean": 0.861,
+      "cv_AUC_std": 0.0134
+    },
+    {
+      "model": "D-MPNN",
+      "folds": 2,
+      "cv_AUC_mean": 0.7796,
+      "cv_AUC_std": 0.0207
+    },
+    {
+      "model": "DeepChemGCN",
+      "folds": 2,
+      "cv_AUC_mean": 0.8595,
+      "cv_AUC_std": 0.0022
+    }
+  ],
+  "yrand_mean": {
+    "GIN": {
+      "mean": 0.6402,
+      "std": 0.0721
+    },
+    "GatedGCN": {
+      "mean": 0.6297,
+      "std": 0.0955
+    }
+  },
+  "final_model": "GatedGCN",
+  "test_metrics": {
+    "AUC": 0.9989,
+    "AP": 0.9982,
+    "BalAcc": 0.961
+  },
+  "test_ci": [
+    0.9955,
+    1.0
+  ]
+}

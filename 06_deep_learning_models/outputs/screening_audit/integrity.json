@@ -1,0 +1,499 @@
+{
+  "audit": {
+    "date": "2026-11-23",
+    "provenance": "[USER] request / [GENERATED] implementation",
+    "mode": "read-only audit of EXISTING artifacts; no model training, no network, no source writes",
+    "script": "06_deep_learning_models/screening_audit.py",
+    "outputs_dir": "06_deep_learning_models/outputs/screening_audit",
+    "python": "3.13.9",
+    "pandas": "2.3.3",
+    "numpy": "2.3.5",
+    "rdkit": "2026.03.5",
+    "thresholds": {
+      "ad_cut_strict": 0.52,
+      "nearest_active": 0.4,
+      "active_margin": 0.02,
+      "agreement_range": 0.7,
+      "agreement_std": 0.4
+    },
+    "caveat": "Computational hypotheses only, not assay validation; no compound is called a validated hit."
+  },
+  "inputs": {
+    "screen_primary": {
+      "role": "screen_primary",
+      "path": "00_data/screening/screening_results.csv",
+      "exists": true,
+      "required": true,
+      "status": "loaded",
+      "bytes": 16795622,
+      "data_rows": 154647,
+      "header": [
+        "identifier",
+        "canonical_smiles",
+        "prediction",
+        "prob_class_0",
+        "prob_class_1"
+      ],
+      "schema": {
+        "identifier": "object",
+        "canonical_smiles": "object",
+        "prediction": "int64",
+        "prob_class_0": "float64",
+        "prob_class_1": "float64"
+      },
+      "identifier_stats": {
+        "identifier_column_present": true,
+        "missing_identifiers": 0,
+        "duplicate_identifier_rows": 0,
+        "duplicate_identifier_values": 0,
+        "unique_parent_identifiers_stripped": 116259,
+        "duplicate_parent_rows": 38388
+      }
+    },
+    "domain_part17": {
+      "role": "domain_part17",
+      "path": "Part_17/results/coconut_with_domain.csv",
+      "exists": true,
+      "required": false,
+      "status": "loaded",
+      "bytes": 23410402,
+      "data_rows": 154647,
+      "header": [
+        "identifier",
+        "canonical_smiles",
+        "prediction",
+        "prob_class_0",
+        "prob_class_1",
+        "mw",
+        "logp",
+        "n_hba",
+        "n_hbd",
+        "in_domain"
+      ],
+      "schema": {
+        "identifier": "object",
+        "canonical_smiles": "object",
+        "prediction": "int64",
+        "prob_class_0": "float64",
+        "prob_class_1": "float64",
+        "mw": "float64",
+        "logp": "float64",
+        "n_hba": "int64",
+        "n_hbd": "int64",
+        "in_domain": "bool"
+      },
+      "identifier_stats": {
+        "identifier_column_present": true,
+        "missing_identifiers": 0,
+        "duplicate_identifier_rows": 0,
+        "duplicate_identifier_values": 0,
+        "unique_parent_identifiers_stripped": 116259,
+        "duplicate_parent_rows": 38388
+      }
+    },
+    "gnn_calibrated_part17": {
+      "role": "gnn_calibrated_part17",
+      "path": "Part_17/results/coconut_gnn_screening_full_calibrated.csv",
+      "exists": true,
+      "required": false,
+      "status": "loaded",
+      "bytes": 23563726,
+      "data_rows": 154647,
+      "header": [
+        "identifier",
+        "canonical_smiles",
+        "prediction",
+        "prob_class_0",
+        "prob_class_1",
+        "gnn_pretrain_prob_raw",
+        "gnn_pretrain_prob_cal",
+        "gnn_pretrain_pred_cal"
+      ],
+      "schema": {
+        "identifier": "object",
+        "canonical_smiles": "object",
+        "prediction": "int64",
+        "prob_class_0": "float64",
+        "prob_class_1": "float64",
+        "gnn_pretrain_prob_raw": "float64",
+        "gnn_pretrain_prob_cal": "float64",
+        "gnn_pretrain_pred_cal": "int64"
+      },
+      "identifier_stats": {
+        "identifier_column_present": true,
+        "missing_identifiers": 0,
+        "duplicate_identifier_rows": 0,
+        "duplicate_identifier_values": 0,
+        "unique_parent_identifiers_stripped": 116259,
+        "duplicate_parent_rows": 38388
+      }
+    },
+    "gnn_full_part17": {
+      "role": "gnn_full_part17",
+      "path": "Part_17/results/coconut_gnn_screening_full.csv",
+      "exists": true,
+      "required": false,
+      "status": "loaded",
+      "bytes": 21047170,
+      "data_rows": 154647,
+      "header": [
+        "identifier",
+        "canonical_smiles",
+        "gnn_pretrain_prob",
+        "gnn_pretrain_pred",
+        "gnn_scratch_prob",
+        "gnn_scratch_pred",
+        "rf_prob",
+        "rf_pred"
+      ],
+      "schema": {
+        "identifier": "object",
+        "canonical_smiles": "object",
+        "gnn_pretrain_prob": "float64",
+        "gnn_pretrain_pred": "int64",
+        "gnn_scratch_prob": "float64",
+        "gnn_scratch_pred": "int64",
+        "rf_prob": "float64",
+        "rf_pred": "int64"
+      },
+      "identifier_stats": {
+        "identifier_column_present": true,
+        "missing_identifiers": 0,
+        "duplicate_identifier_rows": 0,
+        "duplicate_identifier_values": 0,
+        "unique_parent_identifiers_stripped": 116259,
+        "duplicate_parent_rows": 38388
+      }
+    },
+    "rankfusion_part17": {
+      "role": "rankfusion_part17",
+      "path": "Part_17/results/coconut_rescore_rankfusion.csv",
+      "exists": true,
+      "required": false,
+      "status": "loaded",
+      "bytes": 21292460,
+      "data_rows": 154647,
+      "header": [
+        "identifier",
+        "canonical_smiles",
+        "gnn_cal",
+        "rf_prob",
+        "S",
+        "S_rank",
+        "in_domain"
+      ],
+      "schema": {
+        "identifier": "object",
+        "canonical_smiles": "object",
+        "gnn_cal": "float64",
+        "rf_prob": "float64",
+        "S": "float64",
+        "S_rank": "int64",
+        "in_domain": "bool"
+      },
+      "identifier_stats": {
+        "identifier_column_present": true,
+        "missing_identifiers": 0,
+        "duplicate_identifier_rows": 0,
+        "duplicate_identifier_values": 0,
+        "unique_parent_identifiers_stripped": 116259,
+        "duplicate_parent_rows": 38388
+      }
+    },
+    "consensus_part17": {
+      "role": "consensus_part17",
+      "path": "Part_17/results/consensus_T1.csv",
+      "exists": true,
+      "required": false,
+      "status": "loaded",
+      "bytes": 14977,
+      "data_rows": 101,
+      "header": [
+        "identifier",
+        "canonical_smiles",
+        "gnn_cal",
+        "rf_prob",
+        "S",
+        "S_rank",
+        "in_domain"
+      ],
+      "schema": {
+        "identifier": "object",
+        "canonical_smiles": "object",
+        "gnn_cal": "float64",
+        "rf_prob": "float64",
+        "S": "float64",
+        "S_rank": "int64",
+        "in_domain": "bool"
+      },
+      "identifier_stats": {
+        "identifier_column_present": true,
+        "missing_identifiers": 0,
+        "duplicate_identifier_rows": 0,
+        "duplicate_identifier_values": 0,
+        "unique_parent_identifiers_stripped": 67,
+        "duplicate_parent_rows": 34
+      }
+    },
+    "disagreement_part17": {
+      "role": "disagreement_part17",
+      "path": "Part_17/results/coconut_disagreement_flags.csv",
+      "exists": true,
+      "required": false,
+      "status": "loaded",
+      "bytes": 3285127,
+      "data_rows": 30010,
+      "header": [
+        "identifier",
+        "gnn_pretrain_prob",
+        "gnn_scratch_prob",
+        "rf_prob",
+        "gnn_pretrain_prob_cal",
+        "disagreement",
+        "distrust_gt03"
+      ],
+      "schema": {
+        "identifier": "object",
+        "gnn_pretrain_prob": "float64",
+        "gnn_scratch_prob": "float64",
+        "rf_prob": "float64",
+        "gnn_pretrain_prob_cal": "float64",
+        "disagreement": "float64",
+        "distrust_gt03": "int64"
+      },
+      "identifier_stats": {
+        "identifier_column_present": true,
+        "missing_identifiers": 0,
+        "duplicate_identifier_rows": 0,
+        "duplicate_identifier_values": 0,
+        "unique_parent_identifiers_stripped": 21411,
+        "duplicate_parent_rows": 8599
+      }
+    },
+    "training": {
+      "role": "training",
+      "path": "00_data/training/ro5_properties_filtered.csv",
+      "exists": true,
+      "required": true,
+      "status": "loaded",
+      "bytes": 98910,
+      "data_rows": 645,
+      "header": [
+        "molecule_chembl_id",
+        "bioactivity_class",
+        "pIC50",
+        "canonical_smiles",
+        "molecular_weight",
+        "n_hba",
+        "n_hbd",
+        "logp",
+        "ro5_fulfilled"
+      ],
+      "schema": {
+        "molecule_chembl_id": "object",
+        "bioactivity_class": "object",
+        "pIC50": "float64",
+        "canonical_smiles": "object",
+        "molecular_weight": "float64",
+        "n_hba": "int64",
+        "n_hbd": "int64",
+        "logp": "float64",
+        "ro5_fulfilled": "bool"
+      },
+      "identifier_stats": {
+        "identifier_column_present": false
+      }
+    },
+    "part20_screening_full": {
+      "role": "part20_screening_full",
+      "path": "03_screening_pipeline/part20_fixed/screening_full_regression.csv",
+      "exists": true,
+      "required": false,
+      "status": "loaded",
+      "bytes": 38592249,
+      "data_rows": 154587,
+      "header": [
+        "identifier",
+        "canonical_smiles",
+        "pred_gcn_pic50",
+        "pred_gin_pic50",
+        "avg_pred_pic50",
+        "std_pred_pic50",
+        "conservative_pic50",
+        "maxT_464",
+        "nn_464_id",
+        "maxT_645",
+        "nn_645_id",
+        "maxT_343act",
+        "nn_343act_id",
+        "in_AD",
+        "in_AD_all645",
+        "tier",
+        "schema_version"
+      ],
+      "schema": {
+        "identifier": "object",
+        "canonical_smiles": "object",
+        "pred_gcn_pic50": "float64",
+        "pred_gin_pic50": "float64",
+        "avg_pred_pic50": "float64",
+        "std_pred_pic50": "float64",
+        "conservative_pic50": "float64",
+        "maxT_464": "float64",
+        "nn_464_id": "object",
+        "maxT_645": "float64",
+        "nn_645_id": "object",
+        "maxT_343act": "float64",
+        "nn_343act_id": "object",
+        "in_AD": "bool",
+        "in_AD_all645": "bool",
+        "tier": "object",
+        "schema_version": "int64"
+      },
+      "identifier_stats": {
+        "identifier_column_present": true,
+        "missing_identifiers": 0,
+        "duplicate_identifier_rows": 0,
+        "duplicate_identifier_values": 0,
+        "unique_parent_identifiers_stripped": 116212,
+        "duplicate_parent_rows": 38375
+      }
+    },
+    "cuts": {
+      "role": "cuts",
+      "path": "00_data/config/cuts.json",
+      "exists": true,
+      "status": "loaded",
+      "content": {
+        "ad_cut": 0.4,
+        "rf_t1_cut": 0.6,
+        "rf_t2_cut": 0.4,
+        "gnn_hit_cut": 7.0,
+        "source": "repo restructure; strict AD made explicit",
+        "ad_cut_strict": 0.52
+      }
+    }
+  },
+  "warnings": [
+    "part20_screening_full: requested columns absent (['pred_afp_pic50', 'pred_hfgin_pic50', 'pred_chemberta_pic50', 'active_margin', 'margin', 'maxT_inactive', 'maxT_inact']); these gates may be unavailable"
+  ],
+  "screen_integrity": {
+    "data_rows": 154647,
+    "header": [
+      "identifier",
+      "canonical_smiles",
+      "prediction",
+      "prob_class_0",
+      "prob_class_1"
+    ],
+    "missing_identifiers": 0,
+    "missing_canonical_smiles": 0,
+    "duplicate_identifier_rows": 0,
+    "unique_identifiers": 154647,
+    "valid_smiles_rows": 154647,
+    "invalid_smiles_rows": 0,
+    "valid_smiles_fraction": 1.0,
+    "unique_parent_identifiers": 116259,
+    "duplicate_parent_rows": 38388,
+    "unique_murcko_scaffolds": 38138,
+    "scaffold_rule": "BDK Murcko scaffold, includeChirality=False (stereo-blind, matches GCN featurisation)"
+  },
+  "training_smiles_overlap": {
+    "rule": "exact string match after str.strip() only; no canonicalisation, no tautomer/stereo normalisation",
+    "reported_not_assumed_absent": true,
+    "training_rows": 645,
+    "unique_training_smiles": 645,
+    "screening_rows_matching_training_smiles": 0,
+    "unique_screening_smiles_matching_training": 0,
+    "training_smiles_found_in_screen": [],
+    "training_murcko_scaffolds": 203,
+    "screening_murcko_scaffolds": 38138,
+    "shared_murcko_scaffolds": 9,
+    "interpretation": "Exact-canonical-string training/SMILES overlap is a direct label-leak check; scaffold overlap is only analogue proximity, not proof of leakage."
+  },
+  "cross_file_checks": {
+    "domain_part17": {
+      "a": "screen_primary",
+      "b": "domain_part17",
+      "a_rows": 154647,
+      "b_rows": 154647,
+      "unique_identifiers_a": 154647,
+      "unique_identifiers_b": 154647,
+      "identifiers_in_both": 154647,
+      "identifiers_only_in_a": 0,
+      "identifiers_only_in_b": 0,
+      "smiles_mismatches_on_shared_identifiers": 0
+    },
+    "gnn_calibrated_part17": {
+      "a": "screen_primary",
+      "b": "gnn_calibrated_part17",
+      "a_rows": 154647,
+      "b_rows": 154647,
+      "unique_identifiers_a": 154647,
+      "unique_identifiers_b": 154647,
+      "identifiers_in_both": 154647,
+      "identifiers_only_in_a": 0,
+      "identifiers_only_in_b": 0,
+      "smiles_mismatches_on_shared_identifiers": 0
+    },
+    "gnn_full_part17": {
+      "a": "screen_primary",
+      "b": "gnn_full_part17",
+      "a_rows": 154647,
+      "b_rows": 154647,
+      "unique_identifiers_a": 154647,
+      "unique_identifiers_b": 154647,
+      "identifiers_in_both": 154647,
+      "identifiers_only_in_a": 0,
+      "identifiers_only_in_b": 0,
+      "smiles_mismatches_on_shared_identifiers": 0
+    },
+    "part20_screening_full": {
+      "a": "screen_primary",
+      "b": "part20_screening_full",
+      "a_rows": 154647,
+      "b_rows": 154587,
+      "unique_identifiers_a": 154647,
+      "unique_identifiers_b": 154587,
+      "identifiers_in_both": 154587,
+      "identifiers_only_in_a": 60,
+      "identifiers_only_in_b": 0,
+      "smiles_mismatches_on_shared_identifiers": 0
+    }
+  },
+  "ad_definition": {
+    "gate_used_in_funnel": "coconut_with_domain.csv::in_domain == True (per audit instruction)",
+    "actual_definition_in_source_data": "Part_17/Part_17_Pretrain_Finetune_v1_regression.ipynb cell 21 / Part_17_Pretrain_Finetune.ipynb cell 13: mw, logp, n_hba and n_hbd each within mean +/- 2*SD of the 645 curated training compounds, with non-null mw. This is a PHYSICOCHEMICAL DESCRIPTOR BOX, not a Tanimoto AD score.",
+    "is_maxT_464": false,
+    "documented_strict_ad_definition": "maxT_464 >= 0.52 (docs/IMPROVEMENTS.md P1 #8, docs/ERRORS_AND_FIXES.md section 3, 00_data/config/cuts.json)",
+    "warning": "Do NOT describe the Part_17 in_domain column as the strict maxT_464 >= 0.52 AD gate.",
+    "in_domain_true_rows": 38761,
+    "in_domain_fraction": 0.250642,
+    "in_domain_column_present": true,
+    "maxT_464_rows_missing_in_primary_screen": 60,
+    "crosstab_in_domain_vs_maxT464_ge_cut": {
+      "in_domain_false_maxt_below_or_missing": 115821,
+      "in_domain_false_maxt_above_cut": 65,
+      "in_domain_true_maxt_below_or_missing": 38730,
+      "in_domain_true_maxt_above_cut": 31,
+      "note": "Rows without maxT_464 (60 rows from the 154,647-row screen not present in the 154,587-row Part_20 artifact) count as below/missing."
+    },
+    "maxT_464_rows_ge_cut": 96,
+    "maxT_464_rows_scored": 154587,
+    "maxT_464_source": "03_screening_pipeline/part20_fixed/screening_full_regression.csv"
+  },
+  "gate_availability": {
+    "strict_AD_in_domain_column": "available",
+    "strict_AD_maxT_464_diagnostic": "available",
+    "nearest_active_support_maxT_343act": "available",
+    "active_inactive_margin": "unavailable: required columns missing",
+    "core_model_agreement": "partial: 2 of 3 core pIC50 model columns in saved CSVs",
+    "margin_required_columns": [
+      "active_margin (explicit) OR maxT_343act + maxT_inactive (or maxT_inact)"
+    ],
+    "agreement_required_columns": [
+      "std_pred_pic50 (or >=2 model pIC50 columns)",
+      "range across GCN/GIN/AttentiveFP pIC50 predictions"
+    ]
+  }
+}

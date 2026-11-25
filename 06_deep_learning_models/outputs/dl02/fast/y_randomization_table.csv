@@ -1,0 +1,5 @@
+model,shuffle,shuf_AUC,shuf_AP,shuf_BalAcc
+FPMlpDeep,1,0.7211,0.7803,0.6049
+FPMlpDeep,2,0.6177,0.6431,0.6837
+ResidualMlp,1,0.5922,0.6324,0.6267
+ResidualMlp,2,0.5967,0.6577,0.5262

@@ -1,0 +1,300 @@
+[setup] environment ready — python 3.13.9 | torch 2.13.0+cpu | CPU | 8 cpu threads
+[seed] RANDOM_SEED=57 | profile=fast | TASK=cls | primary metric=AUC | outputs -> outputs/dl01/fast
+[S04] no CUDA — CPU mode (8 threads, python 3.13.9)
+[S05] loaded: ../00_data/training/ro5_properties_filtered.csv
+[S05] 645 compounds | Active 343 / Inactive 302 | pIC50 3.60-10.23
+[S05] source: ChEMBL MDM2-p53 bioactivity -> 2,571 raw records -> 1,933 unique compounds -> 645 after Lipinski-RO5 filtering (Arjun sir pipeline, Part_2)
+[S05] columns: molecule_chembl_id | canonical_smiles | bioactivity_class (Active/Inactive) | pIC50 = -log10(IC50 M) | MW / HBA / HBD / logP | ro5_fulfilled
+[S05] labels: 1 = Active, 0 = Inactive -> every classifier outputs softmax probabilities (prob_class_1 = P(Active), same schema as screening_results.csv)
+<Figure size 1500x400 with 3 Axes>
+[S06] unique Murcko scaffolds: 204 | INVALID: 0
+[S06] split: train 464 | val 52 | test 129 | Active tr/va/te = 262/29/52 | scaffold overlap train-test = 0 | test Murcko scaffolds=5 largest=[(np.str_('O=C1c2ccccc2C(c2ccccc2)N1Cc1ccccc1'), 40), (np.str_('c1ccc(C(Nc2ccccn2)c2ccc3cccnc3c2)cc1'), 34), (np.str_('O=C1c2nn(-c3cncnc3)cc2C(c2ccccc2)N1c1ccc[nH]c1=O'), 31)] | test scored ONCE (section 13)
+[S06][WARN] test set has very few Murcko scaffolds; high holdout AUC may reflect scaffold/series separation, not prospective molecule-level performance.
+[S06] graphs built: 645 (78-dim atoms, 6-dim bonds, both directions)
+[S06] valid SMILES: 645 / 645
+[S06] descriptors (645, 10) (standardised) | char codes (645, 96) | vocab 79 chars
+[S07] NB1 models: ['AttentiveFP', 'D-MPNN', 'DeepChemGCN', 'DescriptorMLP', 'GAT', 'GATv2', 'GCN', 'GIN', 'GINE', 'GatedGCN', 'GraphSAGE', 'HybridGCNGAT', 'SmilesCNN']
+[S07] deepchem not installed -> S09b real GCNModel skipped (pure-torch DeepChemGCN still trains above)
+[S07c] extended roster ON: +21 models (total registry 34), array key=desc
+[S07c] 3-D models defined but NOT registered: no conformer coordinates (d.pos). Add 3-D coords to the featurizer, install e3nn, then set DL_USE_3D=1.
+[S08] engine ready | epochs=8 patience=4 | batch graph=64 array=128 | AMP=False | clip=5.0
+      [DescriptorMLP] ep   1 loss 0.7016 val AUC 0.8051
+      [DescriptorMLP] ep   8 loss 0.4309 val AUC 0.8906
+[S09] DescriptorMLP  val {'AUC': 0.8951, 'AP': 0.8598, 'BalAcc': 0.8441} | 18,690 params | 8 ep | 0.6s
+      [SmilesCNN] ep   1 loss 0.6847 val AUC 0.8681
+      [SmilesCNN] ep   8 loss 0.3131 val AUC 0.9190
+[S09] SmilesCNN      val {'AUC': 0.919, 'AP': 0.8888, 'BalAcc': 0.8831} | 217,154 params | 8 ep | 4.7s
+      [GCN] ep   1 loss 0.6466 val AUC 0.8531
+      [GCN] ep   8 loss 0.3946 val AUC 0.9415
+[S09] GCN            val {'AUC': 0.9415, 'AP': 0.9397, 'BalAcc': 0.8531} | 60,482 params | 8 ep | 4.1s
+      [GIN] ep   1 loss 0.5907 val AUC 0.8756
+      [GIN] ep   8 loss 0.3016 val AUC 0.9535
+[S09] GIN            val {'AUC': 0.9535, 'AP': 0.9586, 'BalAcc': 0.8831} | 77,061 params | 8 ep | 1.9s
+      [GINE] ep   1 loss 0.5909 val AUC 0.8036
+      [GINE] ep   8 loss 0.3352 val AUC 0.9190
+[S09] GINE           val {'AUC': 0.9505, 'AP': 0.9541, 'BalAcc': 0.8958} | 79,399 params | 8 ep | 3.3s
+      [GAT] ep   1 loss 0.6184 val AUC 0.8636
+      [GAT] ep   8 loss 0.3705 val AUC 0.9400
+[S09] GAT            val {'AUC': 0.946, 'AP': 0.9457, 'BalAcc': 0.8531} | 372,930 params | 8 ep | 12.7s
+      [GATv2] ep   1 loss 0.5485 val AUC 0.8846
+      [GATv2] ep   8 loss 0.3455 val AUC 0.9265
+[S09] GATv2          val {'AUC': 0.943, 'AP': 0.9425, 'BalAcc': 0.8531} | 676,034 params | 8 ep | 20.7s
+      [GraphSAGE] ep   1 loss 0.6590 val AUC 0.7976
+      [GraphSAGE] ep   8 loss 0.3826 val AUC 0.9295
+[S09] GraphSAGE      val {'AUC': 0.934, 'AP': 0.9363, 'BalAcc': 0.8703} | 103,234 params | 8 ep | 3.0s
+      [GatedGCN] ep   1 loss 0.6376 val AUC 0.8561
+      [GatedGCN] ep   8 loss 0.3277 val AUC 0.9385
+[S09] GatedGCN       val {'AUC': 0.9385, 'AP': 0.9391, 'BalAcc': 0.9003} | 196,802 params | 8 ep | 9.2s
+      [HybridGCNGAT] ep   1 loss 0.6067 val AUC 0.8486
+      [HybridGCNGAT] ep   8 loss 0.3312 val AUC 0.9325
+[S09] HybridGCNGAT   val {'AUC': 0.9325, 'AP': 0.9201, 'BalAcc': 0.8486} | 200,834 params | 8 ep | 12.8s
+      [AttentiveFP] ep   1 loss 0.7002 val AUC 0.8921
+      [AttentiveFP] ep   8 loss 0.4480 val AUC 0.9130
+[S09] AttentiveFP    val {'AUC': 0.913, 'AP': 0.9198, 'BalAcc': 0.8441} | 490,882 params | 8 ep | 11.5s
+      [D-MPNN] ep   1 loss 0.6922 val AUC 0.8771
+      [D-MPNN] ep   8 loss 0.4622 val AUC 0.9025
+[S09] D-MPNN         val {'AUC': 0.9085, 'AP': 0.9163, 'BalAcc': 0.8178} | 60,482 params | 8 ep | 6.9s
+      [DeepChemGCN] ep   1 loss 0.6373 val AUC 0.8756
+      [DeepChemGCN] ep   8 loss 0.3171 val AUC 0.9340
+[S09] DeepChemGCN    val {'AUC': 0.9415, 'AP': 0.9406, 'BalAcc': 0.8831} | 136,130 params | 8 ep | 2.1s
+      [ChebNet] ep   1 loss 0.6680 val AUC 0.8576
+      [ChebNet] ep   8 loss 0.3539 val AUC 0.9400
+[S09] ChebNet        val {'AUC': 0.949, 'AP': 0.9534, 'BalAcc': 0.8876} | 96,194 params | 8 ep | 3.3s
+      [MoNet] ep   1 loss 0.6594 val AUC 0.8111
+      [MoNet] ep   8 loss 0.4273 val AUC 0.8951
+[S09] MoNet          val {'AUC': 0.8951, 'AP': 0.869, 'BalAcc': 0.8223} | 149,026 params | 8 ep | 5.6s
+      [GGNN] ep   1 loss 0.6886 val AUC 0.8141
+      [GGNN] ep   8 loss 0.4603 val AUC 0.9040
+[S09] GGNN           val {'AUC': 0.904, 'AP': 0.9092, 'BalAcc': 0.8178} | 174,914 params | 8 ep | 7.3s
+      [GCNII] ep   1 loss 0.6845 val AUC 0.8621
+      [GCNII] ep   8 loss 0.5145 val AUC 0.8561
+[S09] GCNII          val {'AUC': 0.8741, 'AP': 0.8724, 'BalAcc': 0.8358} | 124,994 params | 8 ep | 4.2s
+      [JKNet] ep   1 loss 0.6839 val AUC 0.8396
+      [JKNet] ep   8 loss 0.4539 val AUC 0.8816
+[S09] JKNet          val {'AUC': 0.8831, 'AP': 0.876, 'BalAcc': 0.8186} | 92,482 params | 8 ep | 5.1s
+      [APPNP] ep   1 loss 0.6881 val AUC 0.8216
+      [APPNP] ep   8 loss 0.6523 val AUC 0.8696
+[S09] APPNP          val {'AUC': 0.8696, 'AP': 0.8657, 'BalAcc': 0.5} | 10,370 params | 8 ep | 23.5s
+      [SGC] ep   1 loss 0.9006 val AUC 0.3418
+      [SGC] ep   8 loss 0.4581 val AUC 0.9025
+[S09] SGC            val {'AUC': 0.907, 'AP': 0.9211, 'BalAcc': 0.8006} | 10,370 params | 8 ep | 3.2s
+      [MPNNSet2Set] ep   1 loss 0.6898 val AUC 0.8516
+      [MPNNSet2Set] ep   8 loss 0.4898 val AUC 0.8876
+[S09] MPNNSet2Set    val {'AUC': 0.8906, 'AP': 0.9156, 'BalAcc': 0.7264} | 344,706 params | 8 ep | 19.7s
+      [GraphNets] ep   1 loss 0.7618 val AUC 0.9040
+[S09] GraphNets      val {'AUC': 0.946, 'AP': 0.951, 'BalAcc': 0.8531} | 914,050 params | 8 ep | 351.2s
+      [VirtualGIN] ep   1 loss 0.6018 val AUC 0.9175
+[S09] VirtualGIN     val {'AUC': 0.9265, 'AP': 0.9286, 'BalAcc': 0.7496} | 126,658 params | 7 ep | 2.8s
+      [SAGPool] ep   1 loss 0.6872 val AUC 0.6747
+      [SAGPool] ep   8 loss 0.5273 val AUC 0.8531
+[S09] SAGPool        val {'AUC': 0.8711, 'AP': 0.8893, 'BalAcc': 0.7699} | 26,948 params | 8 ep | 4.6s
+      [TopKPool] ep   1 loss 0.6890 val AUC 0.7616
+[S09] TopKPool       val {'AUC': 0.8156, 'AP': 0.8285, 'BalAcc': 0.5} | 26,818 params | 6 ep | 0.7s
+      [DiffPool] ep   1 loss 0.6788 val AUC 0.8636
+[S09] DiffPool       val {'AUC': 0.8891, 'AP': 0.8744, 'BalAcc': 0.5} | 27,722 params | 8 ep | 0.9s
+      [TabTransformer] ep   1 loss 0.6255 val AUC 0.8471
+      [TabTransformer] ep   8 loss 0.4907 val AUC 0.8546
+[S09] TabTransformer val {'AUC': 0.8591, 'AP': 0.807, 'BalAcc': 0.8096} | 274,882 params | 8 ep | 1.7s
+      [NODE] ep   1 loss 0.7342 val AUC 0.5067
+[S09] NODE           val {'AUC': 0.5067, 'AP': 0.5452, 'BalAcc': 0.5} | 134 params | 5 ep | 0.1s
+      [TabNet] ep   1 loss 0.6606 val AUC 0.8291
+      [TabNet] ep   8 loss 0.4392 val AUC 0.8816
+[S09] TabNet         val {'AUC': 0.8816, 'AP': 0.8697, 'BalAcc': 0.8486} | 12,492 params | 8 ep | 0.2s
+      [SmilesBERT] ep   1 loss 0.6855 val AUC 0.8231
+      [SmilesBERT] ep   8 loss 0.4096 val AUC 0.8981
+[S09] SmilesBERT     val {'AUC': 0.8981, 'AP': 0.8801, 'BalAcc': 0.8831} | 560,834 params | 8 ep | 41.0s
+      [MolBERT] ep   1 loss 0.7854 val AUC 0.8141
+      [MolBERT] ep   8 loss 0.4342 val AUC 0.8936
+[S09] MolBERT        val {'AUC': 0.8936, 'AP': 0.8671, 'BalAcc': 0.8831} | 825,794 params | 8 ep | 61.2s
+      [SmilesTransformerLM] ep   1 loss 0.6666 val AUC 0.8261
+      [SmilesTransformerLM] ep   8 loss 0.3962 val AUC 0.8921
+[S09] SmilesTransformerLM val {'AUC': 0.8996, 'AP': 0.8766, 'BalAcc': 0.8831} | 295,874 params | 8 ep | 20.8s
+      [MolBART] ep   1 loss 0.6839 val AUC 0.8066
+      [MolBART] ep   8 loss 0.4124 val AUC 0.9010
+[S09] MolBART        val {'AUC': 0.901, 'AP': 0.8826, 'BalAcc': 0.8658} | 560,834 params | 8 ep | 51.8s
+      [MolT5] ep   1 loss 0.6839 val AUC 0.8066
+      [MolT5] ep   8 loss 0.4124 val AUC 0.9010
+[S09] MolT5          val {'AUC': 0.901, 'AP': 0.8826, 'BalAcc': 0.8658} | 560,834 params | 8 ep | 52.8s
+                  model  val_AUC  val_AP  val_BalAcc  params  epochs_run  \
+0                   GIN   0.9535  0.9586      0.8831   77061           8   
+1                  GINE   0.9505  0.9541      0.8958   79399           8   
+2               ChebNet   0.9490  0.9534      0.8876   96194           8   
+3                   GAT   0.9460  0.9457      0.8531  372930           8   
+4             GraphNets   0.9460  0.9510      0.8531  914050           8   
+5                 GATv2   0.9430  0.9425      0.8531  676034           8   
+6           DeepChemGCN   0.9415  0.9406      0.8831  136130           8   
+7                   GCN   0.9415  0.9397      0.8531   60482           8   
+8              GatedGCN   0.9385  0.9391      0.9003  196802           8   
+9             GraphSAGE   0.9340  0.9363      0.8703  103234           8   
+10         HybridGCNGAT   0.9325  0.9201      0.8486  200834           8   
+11           VirtualGIN   0.9265  0.9286      0.7496  126658           7   
+12            SmilesCNN   0.9190  0.8888      0.8831  217154           8   
+13          AttentiveFP   0.9130  0.9198      0.8441  490882           8   
+14               D-MPNN   0.9085  0.9163      0.8178   60482           8   
+15                  SGC   0.9070  0.9211      0.8006   10370           8   
+16                 GGNN   0.9040  0.9092      0.8178  174914           8   
+17                MolT5   0.9010  0.8826      0.8658  560834           8   
+18              MolBART   0.9010  0.8826      0.8658  560834           8   
+19  SmilesTransformerLM   0.8996  0.8766      0.8831  295874           8   
+20           SmilesBERT   0.8981  0.8801      0.8831  560834           8   
+21        DescriptorMLP   0.8951  0.8598      0.8441   18690           8   
+22                MoNet   0.8951  0.8690      0.8223  149026           8   
+23              MolBERT   0.8936  0.8671      0.8831  825794           8   
+24          MPNNSet2Set   0.8906  0.9156      0.7264  344706           8   
+25             DiffPool   0.8891  0.8744      0.5000   27722           8   
+26                JKNet   0.8831  0.8760      0.8186   92482           8   
+27               TabNet   0.8816  0.8697      0.8486   12492           8   
+28                GCNII   0.8741  0.8724      0.8358  124994           8   
+29              SAGPool   0.8711  0.8893      0.7699   26948           8   
+30                APPNP   0.8696  0.8657      0.5000   10370           8   
+31       TabTransformer   0.8591  0.8070      0.8096  274882           8   
+32             TopKPool   0.8156  0.8285      0.5000   26818           6   
+33                 NODE   0.5067  0.5452      0.5000     134           5   
+
+      sec  
+0     1.9  
+1     3.3  
+2     3.3  
+3    12.7  
+4   351.2  
+5    20.7  
+6     2.1  
+7     4.1  
+8     9.2  
+9     3.0  
+10   12.8  
+11    2.8  
+12    4.7  
+13   11.5  
+14    6.9  
+15    3.2  
+16    7.3  
+17   52.8  
+18   51.8  
+19   20.8  
+20   41.0  
+21    0.6  
+22    5.6  
+23   61.2  
+24   19.7  
+25    0.9  
+26    5.1  
+27    0.2  
+28    4.2  
+29    4.6  
+30   23.5  
+31    1.7  
+32    0.7  
+33    0.1  
+[S09b] [skipped] deepchem not importable (ModuleNotFoundError: No module named 'tensorflow') — pure-torch DeepChemGCN (S07) already trained
+[S09b] optional real deepchem GCNModel skipped; set DL_INSTALL_DEEPCHEM=1 to try it
+[S10] fine-tuning DescriptorMLP (stage ladder)
+   stage A lr: {'lr': 0.001} -> val AUC 0.8891
+   stage B dropout/wd: no improvement, keeping {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}
+   stage C capacity: no improvement, keeping {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}
+   stage D batch: no improvement, keeping {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}
+[S10] DescriptorMLP tuned {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None} -> val {'AUC': 0.8951, 'AP': 0.8598, 'BalAcc': 0.8441}
+[S10] fine-tuning SmilesCNN (stage ladder)
+   stage A lr: {'lr': 0.0005} -> val AUC 0.9160
+   stage B dropout/wd: no improvement, keeping {'lr': 0.0005, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}
+   stage C capacity: no improvement, keeping {'lr': 0.0005, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}
+   stage D batch: no improvement, keeping {'lr': 0.0005, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}
+[S10] SmilesCNN tuned {'lr': 0.0005, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None} -> val {'AUC': 0.9205, 'AP': 0.8924, 'BalAcc': 0.8876}
+[S10] fine-tuning GCN (stage ladder)
+   stage A lr: {'lr': 0.001} -> val AUC 0.9145
+   stage B dropout/wd: {'dropout': 0.1, 'wd': 0.0} -> val AUC 0.9295
+   stage C capacity: no improvement, keeping {'lr': 0.001, 'dropout': 0.1, 'hidden': None, 'wd': 0.0, 'batch': None}
+   stage D batch: no improvement, keeping {'lr': 0.001, 'dropout': 0.1, 'hidden': None, 'wd': 0.0, 'batch': None}
+[S10] GCN tuned {'lr': 0.001, 'dropout': 0.1, 'hidden': None, 'wd': 0.0, 'batch': None} -> val {'AUC': 0.949, 'AP': 0.9481, 'BalAcc': 0.8703}
+[S10] fine-tuning GIN (stage ladder)
+   stage A lr: {'lr': 0.0005} -> val AUC 0.9385
+   stage B dropout/wd: {'dropout': 0.1, 'wd': 0.0} -> val AUC 0.9400
+   stage C capacity: no improvement, keeping {'lr': 0.0005, 'dropout': 0.1, 'hidden': None, 'wd': 0.0, 'batch': None}
+   stage D batch: no improvement, keeping {'lr': 0.0005, 'dropout': 0.1, 'hidden': None, 'wd': 0.0, 'batch': None}
+[S10] GIN tuned {'lr': 0.0005, 'dropout': 0.1, 'hidden': None, 'wd': 0.0, 'batch': None} -> val {'AUC': 0.9505, 'AP': 0.9581, 'BalAcc': 0.9175}
+[S10] fine-tuning GINE (stage ladder)
+   stage A lr: {'lr': 0.001} -> val AUC 0.9475
+   stage B dropout/wd: no improvement, keeping {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}
+   stage C capacity: no improvement, keeping {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}
+   stage D batch: no improvement, keeping {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}
+[S10] GINE tuned {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None} -> val {'AUC': 0.9505, 'AP': 0.9541, 'BalAcc': 0.8958}
+[S10] fine-tuning GAT (stage ladder)
+   stage A lr: {'lr': 0.001} -> val AUC 0.9205
+   stage B dropout/wd: {'dropout': 0.1, 'wd': 0.0} -> val AUC 0.9295
+   stage C capacity: no improvement, keeping {'lr': 0.001, 'dropout': 0.1, 'hidden': None, 'wd': 0.0, 'batch': None}
+   stage D batch: no improvement, keeping {'lr': 0.001, 'dropout': 0.1, 'hidden': None, 'wd': 0.0, 'batch': None}
+[S10] GAT tuned {'lr': 0.001, 'dropout': 0.1, 'hidden': None, 'wd': 0.0, 'batch': None} -> val {'AUC': 0.9475, 'AP': 0.9492, 'BalAcc': 0.8358}
+[S10] fine-tuning GATv2 (stage ladder)
+   stage A lr: {'lr': 0.0005} -> val AUC 0.9190
+   stage B dropout/wd: {'dropout': 0.1, 'wd': 0.0} -> val AUC 0.9280
+   stage C capacity: no improvement, keeping {'lr': 0.0005, 'dropout': 0.1, 'hidden': None, 'wd': 0.0, 'batch': None}
+   stage D batch: no improvement, keeping {'lr': 0.0005, 'dropout': 0.1, 'hidden': None, 'wd': 0.0, 'batch': None}
+[S10] GATv2 tuned {'lr': 0.0005, 'dropout': 0.1, 'hidden': None, 'wd': 0.0, 'batch': None} -> val {'AUC': 0.9325, 'AP': 0.9327, 'BalAcc': 0.8958}
+[S10] fine-tuning GraphSAGE (stage ladder)
+   stage A lr: {'lr': 0.001} -> val AUC 0.9160
+   stage B dropout/wd: {'dropout': 0.1, 'wd': 0.0} -> val AUC 0.9370
+   stage C capacity: {'hidden': 64} -> val AUC 0.9385
+   stage D batch: no improvement, keeping {'lr': 0.001, 'dropout': 0.1, 'hidden': 64, 'wd': 0.0, 'batch': None}
+[S10] GraphSAGE tuned {'lr': 0.001, 'dropout': 0.1, 'hidden': 64, 'wd': 0.0, 'batch': None} -> val {'AUC': 0.958, 'AP': 0.9645, 'BalAcc': 0.9048}
+[S10] fine-tuning GatedGCN (stage ladder)
+   stage A lr: {'lr': 0.001} -> val AUC 0.9370
+   stage B dropout/wd: no improvement, keeping {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}
+   stage C capacity: no improvement, keeping {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}
+   stage D batch: no improvement, keeping {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}
+[S10] GatedGCN tuned {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None} -> val {'AUC': 0.9385, 'AP': 0.9391, 'BalAcc': 0.9003}
+[S10] fine-tuning HybridGCNGAT (stage ladder)
+   stage A lr: {'lr': 0.001} -> val AUC 0.9085
+   stage B dropout/wd: no improvement, keeping {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}
+   stage C capacity: no improvement, keeping {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}
+   stage D batch: no improvement, keeping {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}
+[S10] HybridGCNGAT tuned {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None} -> val {'AUC': 0.9325, 'AP': 0.9201, 'BalAcc': 0.8486}
+[S10] fine-tuning AttentiveFP (stage ladder)
+   stage A lr: {'lr': 0.001} -> val AUC 0.8966
+   stage B dropout/wd: {'dropout': 0.1, 'wd': 0.0} -> val AUC 0.9025
+   stage C capacity: {'hidden': 64} -> val AUC 0.9205
+   stage D batch: no improvement, keeping {'lr': 0.001, 'dropout': 0.1, 'hidden': 64, 'wd': 0.0, 'batch': None}
+[S10] AttentiveFP tuned {'lr': 0.001, 'dropout': 0.1, 'hidden': 64, 'wd': 0.0, 'batch': None} -> val {'AUC': 0.9205, 'AP': 0.929, 'BalAcc': 0.8178}
+[S10] fine-tuning D-MPNN (stage ladder)
+   stage A lr: {'lr': 0.001} -> val AUC 0.8981
+   stage B dropout/wd: {'dropout': 0.3, 'wd': 0.0} -> val AUC 0.9100
+   stage C capacity: no improvement, keeping {'lr': 0.001, 'dropout': 0.3, 'hidden': None, 'wd': 0.0, 'batch': None}
+   stage D batch: no improvement, keeping {'lr': 0.001, 'dropout': 0.3, 'hidden': None, 'wd': 0.0, 'batch': None}
+[S10] D-MPNN tuned {'lr': 0.001, 'dropout': 0.3, 'hidden': None, 'wd': 0.0, 'batch': None} -> val {'AUC': 0.91, 'AP': 0.9377, 'BalAcc': 0.5}
+[S10] fine-tuning DeepChemGCN (stage ladder)
+   stage A lr: {'lr': 0.0005} -> val AUC 0.9115
+   stage B dropout/wd: no improvement, keeping {'lr': 0.0005, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}
+   stage C capacity: no improvement, keeping {'lr': 0.0005, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}
+   stage D batch: no improvement, keeping {'lr': 0.0005, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}
+[S10] DeepChemGCN tuned {'lr': 0.0005, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None} -> val {'AUC': 0.9385, 'AP': 0.9334, 'BalAcc': 0.8531}
+            model  cfg_lr  cfg_dropout  cfg_hidden  cfg_wd cfg_batch  \
+0   DescriptorMLP  0.0010          NaN         NaN     0.0      None   
+1       SmilesCNN  0.0005          NaN         NaN     0.0      None   
+2             GCN  0.0010          0.1         NaN     0.0      None   
+3             GIN  0.0005          0.1         NaN     0.0      None   
+4            GINE  0.0010          NaN         NaN     0.0      None   
+5             GAT  0.0010          0.1         NaN     0.0      None   
+6           GATv2  0.0005          0.1         NaN     0.0      None   
+7       GraphSAGE  0.0010          0.1        64.0     0.0      None   
+8        GatedGCN  0.0010          NaN         NaN     0.0      None   
+9    HybridGCNGAT  0.0010          NaN         NaN     0.0      None   
+10    AttentiveFP  0.0010          0.1        64.0     0.0      None   
+11         D-MPNN  0.0010          0.3         NaN     0.0      None   
+12    DeepChemGCN  0.0005          NaN         NaN     0.0      None   
+
+    ft_val_AUC  ft_val_AP  ft_val_BalAcc  
+0       0.8951     0.8598         0.8441  
+1       0.9205     0.8924         0.8876  
+2       0.9490     0.9481         0.8703  
+3       0.9505     0.9581         0.9175  
+4       0.9505     0.9541         0.8958  
+5       0.9475     0.9492         0.8358  
+6       0.9325     0.9327         0.8958  
+7       0.9580     0.9645         0.9048  
+8       0.9385     0.9391         0.9003  
+9       0.9325     0.9201         0.8486  
+10      0.9205     0.9290         0.8178  
+11      0.9100     0.9377         0.5000  
+12      0.9385     0.9334         0.8531  
+[S10b] stage1a.pt not found -> D-MPNN trains from scratch (hook is optional)
+[S10c] HF pretrained fine-tune disabled (set DL_USE_HF=1 on a GPU machine; DL_HF_MODEL=chemberta|molformer). Pretrained weights stay sensitivity-only.
+[S11] fold val sizes: [258, 258]

@@ -1,0 +1,3 @@
+model,folds,cv_AUC_mean,cv_AUC_std
+GIN-MolCLR,2,0.7072,0.1053
+GIN (scratch),2,0.6322,0.0969

@@ -1,0 +1,279 @@
+{
+  "nb": "dl01",
+  "task": "cls",
+  "smoke": true,
+  "fast": false,
+  "profile": "smoke",
+  "seed": 57,
+  "timestamp": "2026-11-24 07:42:54",
+  "device": "cpu",
+  "n_gpus": 0,
+  "split_sizes": {
+    "train": 464,
+    "val": 52,
+    "test": 129
+  },
+  "models": [
+    "AttentiveFP",
+    "D-MPNN",
+    "DeepChemGCN",
+    "DescriptorMLP",
+    "GAT",
+    "GATv2",
+    "GCN",
+    "GIN",
+    "GINE",
+    "GatedGCN",
+    "GraphSAGE",
+    "HybridGCNGAT",
+    "SmilesCNN"
+  ],
+  "baseline": [
+    {
+      "model": "DescriptorMLP",
+      "val_AUC": 0.7247,
+      "val_AP": 0.7599,
+      "val_BalAcc": 0.5,
+      "params": 18690,
+      "epochs_run": 3,
+      "sec": 0.1
+    },
+    {
+      "model": "SmilesCNN",
+      "val_AUC": 0.8421,
+      "val_AP": 0.864,
+      "val_BalAcc": 0.5,
+      "params": 217154,
+      "epochs_run": 3,
+      "sec": 0.3
+    },
+    {
+      "model": "GCN",
+      "val_AUC": 0.7126,
+      "val_AP": 0.7157,
+      "val_BalAcc": 0.5,
+      "params": 60482,
+      "epochs_run": 3,
+      "sec": 0.3
+    },
+    {
+      "model": "GIN",
+      "val_AUC": 0.7085,
+      "val_AP": 0.7775,
+      "val_BalAcc": 0.5,
+      "params": 77061,
+      "epochs_run": 3,
+      "sec": 0.2
+    },
+    {
+      "model": "GINE",
+      "val_AUC": 0.7045,
+      "val_AP": 0.7646,
+      "val_BalAcc": 0.5506,
+      "params": 79399,
+      "epochs_run": 3,
+      "sec": 0.2
+    },
+    {
+      "model": "GAT",
+      "val_AUC": 0.8704,
+      "val_AP": 0.9203,
+      "val_BalAcc": 0.5,
+      "params": 372930,
+      "epochs_run": 3,
+      "sec": 0.7
+    },
+    {
+      "model": "GATv2",
+      "val_AUC": 0.8381,
+      "val_AP": 0.8959,
+      "val_BalAcc": 0.5,
+      "params": 676034,
+      "epochs_run": 3,
+      "sec": 1.1
+    },
+    {
+      "model": "GraphSAGE",
+      "val_AUC": 0.8381,
+      "val_AP": 0.8196,
+      "val_BalAcc": 0.5,
+      "params": 103234,
+      "epochs_run": 3,
+      "sec": 0.4
+    },
+    {
+      "model": "GatedGCN",
+      "val_AUC": 0.6761,
+      "val_AP": 0.7651,
+      "val_BalAcc": 0.5,
+      "params": 196802,
+      "epochs_run": 3,
+      "sec": 0.5
+    },
+    {
+      "model": "HybridGCNGAT",
+      "val_AUC": 0.8785,
+      "val_AP": 0.862,
+      "val_BalAcc": 0.5,
+      "params": 200834,
+      "epochs_run": 3,
+      "sec": 0.6
+    },
+    {
+      "model": "AttentiveFP",
+      "val_AUC": 0.8745,
+      "val_AP": 0.9048,
+      "val_BalAcc": 0.5,
+      "params": 490882,
+      "epochs_run": 3,
+      "sec": 0.6
+    },
+    {
+      "model": "D-MPNN",
+      "val_AUC": 0.8785,
+      "val_AP": 0.9399,
+      "val_BalAcc": 0.5,
+      "params": 60482,
+      "epochs_run": 3,
+      "sec": 0.3
+    },
+    {
+      "model": "DeepChemGCN",
+      "val_AUC": 0.8826,
+      "val_AP": 0.9148,
+      "val_BalAcc": 0.5,
+      "params": 136130,
+      "epochs_run": 3,
+      "sec": 0.1
+    }
+  ],
+  "finetune_cfg": {
+    "DescriptorMLP": {
+      "lr": 0.001,
+      "dropout": null,
+      "hidden": null,
+      "wd": 0.0,
+      "batch": null
+    },
+    "SmilesCNN": {
+      "lr": 0.001,
+      "dropout": null,
+      "hidden": null,
+      "wd": 0.0,
+      "batch": null
+    },
+    "GCN": {
+      "lr": 0.001,
+      "dropout": null,
+      "hidden": null,
+      "wd": 0.0,
+      "batch": null
+    },
+    "GIN": {
+      "lr": 0.001,
+      "dropout": null,
+      "hidden": null,
+      "wd": 0.0,
+      "batch": null
+    },
+    "GINE": {
+      "lr": 0.001,
+      "dropout": null,
+      "hidden": null,
+      "wd": 0.0,
+      "batch": null
+    },
+    "GAT": {
+      "lr": 0.001,
+      "dropout": null,
+      "hidden": null,
+      "wd": 0.0,
+      "batch": null
+    },
+    "GATv2": {
+      "lr": 0.001,
+      "dropout": null,
+      "hidden": null,
+      "wd": 0.0,
+      "batch": null
+    },
+    "GraphSAGE": {
+      "lr": 0.001,
+      "dropout": null,
+      "hidden": null,
+      "wd": 0.0,
+      "batch": null
+    },
+    "GatedGCN": {
+      "lr": 0.001,
+      "dropout": null,
+      "hidden": null,
+      "wd": 0.0,
+      "batch": null
+    },
+    "HybridGCNGAT": {
+      "lr": 0.001,
+      "dropout": null,
+      "hidden": null,
+      "wd": 0.0,
+      "batch": null
+    },
+    "AttentiveFP": {
+      "lr": 0.001,
+      "dropout": null,
+      "hidden": null,
+      "wd": 0.0,
+      "batch": null
+    },
+    "D-MPNN": {
+      "lr": 0.001,
+      "dropout": null,
+      "hidden": null,
+      "wd": 0.0,
+      "batch": null
+    },
+    "DeepChemGCN": {
+      "lr": 0.001,
+      "dropout": null,
+      "hidden": null,
+      "wd": 0.0,
+      "batch": null
+    }
+  },
+  "cv": [
+    {
+      "model": "DescriptorMLP",
+      "folds": 2,
+      "cv_AUC_mean": 0.5906,
+      "cv_AUC_std": 0.2063
+    },
+    {
+      "model": "SmilesCNN",
+      "folds": 2,
+      "cv_AUC_mean": 0.8775,
+      "cv_AUC_std": 0.0598
+    },
+    {
+      "model": "GCN",
+      "folds": 2,
+      "cv_AUC_mean": 0.6106,
+      "cv_AUC_std": 0.1498
+    }
+  ],
+  "yrand_mean": {
+    "DescriptorMLP": {
+      "mean": 0.4413,
+      "std": 0.0858
+    }
+  },
+  "final_model": "SmilesCNN",
+  "test_metrics": {
+    "AUC": 0.8667,
+    "AP": 0.8994,
+    "BalAcc": 0.5
+  },
+  "test_ci": [
+    0.6592,
+    1.0
+  ]
+}

@@ -1,0 +1,143 @@
+{
+  "nb": "dl04",
+  "task": "cls",
+  "smoke": true,
+  "fast": false,
+  "profile": "smoke",
+  "seed": 57,
+  "timestamp": "2026-11-24 07:44:07",
+  "device": "cpu",
+  "n_gpus": 0,
+  "split_sizes": {
+    "train": 464,
+    "val": 52,
+    "test": 129
+  },
+  "models": [
+    "FTTransformer",
+    "GPS",
+    "GraphTransformer",
+    "PNA",
+    "SmilesTransformer"
+  ],
+  "baseline": [
+    {
+      "model": "PNA",
+      "val_AUC": 0.6356,
+      "val_AP": 0.7248,
+      "val_BalAcc": 0.5,
+      "params": 758846,
+      "epochs_run": 3,
+      "sec": 1.3
+    },
+    {
+      "model": "GraphTransformer",
+      "val_AUC": 0.7814,
+      "val_AP": 0.8421,
+      "val_BalAcc": 0.5951,
+      "params": 177410,
+      "epochs_run": 3,
+      "sec": 0.3
+    },
+    {
+      "model": "GPS",
+      "val_AUC": 0.834,
+      "val_AP": 0.8846,
+      "val_BalAcc": 0.666,
+      "params": 342019,
+      "epochs_run": 3,
+      "sec": 0.8
+    },
+    {
+      "model": "SmilesTransformer",
+      "val_AUC": 0.7773,
+      "val_AP": 0.7989,
+      "val_BalAcc": 0.5,
+      "params": 247010,
+      "epochs_run": 3,
+      "sec": 1.4
+    },
+    {
+      "model": "FTTransformer",
+      "val_AUC": 0.8421,
+      "val_AP": 0.8599,
+      "val_BalAcc": 0.5,
+      "params": 100418,
+      "epochs_run": 3,
+      "sec": 0.1
+    }
+  ],
+  "finetune_cfg": {
+    "PNA": {
+      "lr": 0.001,
+      "dropout": 0.2,
+      "hidden": null,
+      "wd": 0.0,
+      "batch": null
+    },
+    "GraphTransformer": {
+      "lr": 0.001,
+      "dropout": null,
+      "hidden": null,
+      "wd": 0.0,
+      "batch": null
+    },
+    "GPS": {
+      "lr": 0.001,
+      "dropout": null,
+      "hidden": null,
+      "wd": 0.0,
+      "batch": null
+    },
+    "SmilesTransformer": {
+      "lr": 0.001,
+      "dropout": null,
+      "hidden": null,
+      "wd": 0.0,
+      "batch": null
+    },
+    "FTTransformer": {
+      "lr": 0.001,
+      "dropout": null,
+      "hidden": null,
+      "wd": 0.0,
+      "batch": null
+    }
+  },
+  "cv": [
+    {
+      "model": "PNA",
+      "folds": 2,
+      "cv_AUC_mean": 0.5148,
+      "cv_AUC_std": 0.0893
+    },
+    {
+      "model": "GraphTransformer",
+      "folds": 2,
+      "cv_AUC_mean": 0.5642,
+      "cv_AUC_std": 0.1858
+    },
+    {
+      "model": "GPS",
+      "folds": 2,
+      "cv_AUC_mean": 0.8122,
+      "cv_AUC_std": 0.1357
+    }
+  ],
+  "yrand_mean": {
+    "PNA": {
+      "mean": 0.6195,
+      "std": 0.063
+    }
+  },
+  "final_model": "GPS",
+  "test_metrics": {
+    "AUC": 0.8667,
+    "AP": 0.95,
+    "BalAcc": 0.5
+  },
+  "test_ci": [
+    0.6361,
+    1.0
+  ]
+}

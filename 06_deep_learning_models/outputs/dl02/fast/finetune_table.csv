@@ -1,0 +1,6 @@
+model,cfg_lr,cfg_dropout,cfg_hidden,cfg_wd,cfg_batch,ft_val_AUC,ft_val_AP,ft_val_BalAcc
+FPMlpShallow,0.001,0.1,,0.0,,0.952,0.9285,0.9175
+FPMlpDeep,0.001,0.1,,0.0,,0.9505,0.9199,0.9175
+ResidualMlp,0.001,0.1,,0.0,,0.967,0.9688,0.8741
+FingerPrintCNN,0.001,0.3,,0.0,,0.8786,0.8389,0.5
+HybridGCNFp,0.001,0.3,,0.0,,0.9505,0.9199,0.9175

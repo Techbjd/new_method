@@ -1,0 +1,251 @@
+{
+  "caveats": [
+    "Test was scored once descriptively; these numbers are NOT prospective and NOT validation of any hit.",
+    "No 'best' model is chosen here. Do not rank notebooks by these values.",
+    "1% of 129 compounds is ceil(1.29)=2 compounds, so EF1% is extremely unstable; bootstrap CIs are wide and should be read as uncertainty, not evidence of superiority.",
+    "BEDROC(alpha=20) is RDKit CalcBEDROC on score-sorted labels with identifier tie-breaking.",
+    "Metadata copied from each dl0X_results.json is reported as-is and was not used for selection."
+  ],
+  "date": "2026-11-23",
+  "per_notebook": {
+    "dl01": {
+      "prediction_file": "outputs/validation_package/source_fast_predictions/dl01_test_predictions.csv",
+      "results_json": "outputs/validation_package/source_fast_predictions/dl01_results.json",
+      "rows": [
+        {
+          "AP": 0.9981984246690129,
+          "AUC": 0.9988761238761239,
+          "AUC_ci95": [
+            0.9958847487519804,
+            1.0
+          ],
+          "AUC_ci_valid_draws": 2000,
+          "BEDROC_alpha20": 0.9999694319006477,
+          "BEDROC_alpha20_ci95": [
+            0.9997596834128006,
+            1.0
+          ],
+          "BEDROC_ci_valid_draws": 2000,
+          "EF_1pct": 2.480769230769231,
+          "bootstrap_n_requested": 2000,
+          "bootstrap_seed": 57,
+          "descriptive_only": true,
+          "final_model_from_results_json": "GatedGCN",
+          "hits_at_10": 10,
+          "hits_at_1pct": 2,
+          "k_1pct": 2,
+          "model_label": "GatedGCN [prob_class_1]",
+          "n_actives": 52,
+          "n_ids_matching_official_test": 129,
+          "n_inactives": 77,
+          "n_test": 129,
+          "notebook": "dl01",
+          "precision_at_10": 1.0,
+          "precision_at_10_ci95": [
+            1.0,
+            1.0
+          ],
+          "precision_at_10_ci_valid_draws": 2000,
+          "results_json_seed": 57,
+          "results_json_split_sizes": "{\"test\": 129, \"train\": 464, \"val\": 52}",
+          "results_json_test_metrics": "{\"AP\": 0.9982, \"AUC\": 0.9989, \"BalAcc\": 0.961}",
+          "score_column": "prob_class_1",
+          "used_for_model_selection": false
+        }
+      ],
+      "status": "scored_descriptively"
+    },
+    "dl02": {
+      "prediction_file": "outputs/validation_package/source_fast_predictions/dl02_test_predictions.csv",
+      "results_json": "outputs/validation_package/source_fast_predictions/dl02_results.json",
+      "rows": [
+        {
+          "AP": 0.9858162392492923,
+          "AUC": 0.9932567432567433,
+          "AUC_ci95": [
+            0.9763908817345729,
+            1.0
+          ],
+          "AUC_ci_valid_draws": 2000,
+          "BEDROC_alpha20": 0.9974943322336529,
+          "BEDROC_alpha20_ci95": [
+            0.9849067940255322,
+            1.0
+          ],
+          "BEDROC_ci_valid_draws": 2000,
+          "EF_1pct": 2.480769230769231,
+          "bootstrap_n_requested": 2000,
+          "bootstrap_seed": 57,
+          "descriptive_only": true,
+          "final_model_from_results_json": "FPMlpDeep",
+          "hits_at_10": 10,
+          "hits_at_1pct": 2,
+          "k_1pct": 2,
+          "model_label": "FPMlpDeep [prob_class_1]",
+          "n_actives": 52,
+          "n_ids_matching_official_test": 129,
+          "n_inactives": 77,
+          "n_test": 129,
+          "notebook": "dl02",
+          "precision_at_10": 1.0,
+          "precision_at_10_ci95": [
+            1.0,
+            1.0
+          ],
+          "precision_at_10_ci_valid_draws": 2000,
+          "results_json_seed": 57,
+          "results_json_split_sizes": "{\"test\": 129, \"train\": 464, \"val\": 52}",
+          "results_json_test_metrics": "{\"AP\": 0.9858, \"AUC\": 0.9933, \"BalAcc\": 0.9805}",
+          "score_column": "prob_class_1",
+          "used_for_model_selection": false
+        }
+      ],
+      "status": "scored_descriptively"
+    },
+    "dl03": {
+      "prediction_file": "outputs/validation_package/source_fast_predictions/dl03_test_predictions.csv",
+      "results_json": "outputs/validation_package/source_fast_predictions/dl03_results.json",
+      "rows": [
+        {
+          "AP": 0.9786462626949426,
+          "AUC": 0.9898851148851149,
+          "AUC_ci95": [
+            0.9703169494509363,
+            1.0
+          ],
+          "AUC_ci_valid_draws": 2000,
+          "BEDROC_alpha20": 0.995214387143987,
+          "BEDROC_alpha20_ci95": [
+            0.9742084848717234,
+            1.0
+          ],
+          "BEDROC_ci_valid_draws": 2000,
+          "EF_1pct": 2.480769230769231,
+          "bootstrap_n_requested": 2000,
+          "bootstrap_seed": 57,
+          "descriptive_only": true,
+          "final_model_from_results_json": "ResidualMlp",
+          "hits_at_10": 10,
+          "hits_at_1pct": 2,
+          "k_1pct": 2,
+          "model_label": "ResidualMlp [prob_class_1]",
+          "n_actives": 52,
+          "n_ids_matching_official_test": 129,
+          "n_inactives": 77,
+          "n_test": 129,
+          "notebook": "dl03",
+          "precision_at_10": 1.0,
+          "precision_at_10_ci95": [
+            1.0,
+            1.0
+          ],
+          "precision_at_10_ci_valid_draws": 2000,
+          "results_json_seed": 57,
+          "results_json_split_sizes": "{\"test\": 129, \"train\": 464, \"val\": 52}",
+          "results_json_test_metrics": "{\"AP\": 0.9786, \"AUC\": 0.9899, \"BalAcc\": 0.974}",
+          "score_column": "prob_class_1",
+          "used_for_model_selection": false
+        }
+      ],
+      "status": "scored_descriptively"
+    },
+    "dl04": {
+      "prediction_file": "outputs/validation_package/source_fast_predictions/dl04_test_predictions.csv",
+      "results_json": "outputs/validation_package/source_fast_predictions/dl04_results.json",
+      "rows": [
+        {
+          "AP": 0.9751991461139871,
+          "AUC": 0.9871378621378621,
+          "AUC_ci95": [
+            0.9651829175726234,
+            1.0
+          ],
+          "AUC_ci_valid_draws": 2000,
+          "BEDROC_alpha20": 0.9924199612054527,
+          "BEDROC_alpha20_ci95": [
+            0.9619661078465281,
+            1.0
+          ],
+          "BEDROC_ci_valid_draws": 2000,
+          "EF_1pct": 2.480769230769231,
+          "bootstrap_n_requested": 2000,
+          "bootstrap_seed": 57,
+          "descriptive_only": true,
+          "final_model_from_results_json": "PNA",
+          "hits_at_10": 10,
+          "hits_at_1pct": 2,
+          "k_1pct": 2,
+          "model_label": "PNA [prob_class_1]",
+          "n_actives": 52,
+          "n_ids_matching_official_test": 129,
+          "n_inactives": 77,
+          "n_test": 129,
+          "notebook": "dl04",
+          "precision_at_10": 1.0,
+          "precision_at_10_ci95": [
+            1.0,
+            1.0
+          ],
+          "precision_at_10_ci_valid_draws": 2000,
+          "results_json_seed": 57,
+          "results_json_split_sizes": "{\"test\": 129, \"train\": 464, \"val\": 52}",
+          "results_json_test_metrics": "{\"AP\": 0.9752, \"AUC\": 0.9871, \"BalAcc\": 0.9353}",
+          "score_column": "prob_class_1",
+          "used_for_model_selection": false
+        }
+      ],
+      "status": "scored_descriptively"
+    },
+    "dl05": {
+      "prediction_file": "outputs/validation_package/source_fast_predictions/dl05_test_predictions.csv",
+      "results_json": "outputs/validation_package/source_fast_predictions/dl05_results.json",
+      "rows": [
+        {
+          "AP": 0.9971624529316837,
+          "AUC": 0.9981268731268731,
+          "AUC_ci95": [
+            0.9940417080436942,
+            1.0
+          ],
+          "AUC_ci_valid_draws": 2000,
+          "BEDROC_alpha20": 0.9999469977692194,
+          "BEDROC_alpha20_ci95": [
+            0.9996420051984989,
+            1.0
+          ],
+          "BEDROC_ci_valid_draws": 2000,
+          "EF_1pct": 2.480769230769231,
+          "bootstrap_n_requested": 2000,
+          "bootstrap_seed": 57,
+          "descriptive_only": true,
+          "final_model_from_results_json": "GIN-MolCLR",
+          "hits_at_10": 10,
+          "hits_at_1pct": 2,
+          "k_1pct": 2,
+          "model_label": "GIN-MolCLR [prob_class_1]",
+          "n_actives": 52,
+          "n_ids_matching_official_test": 129,
+          "n_inactives": 77,
+          "n_test": 129,
+          "notebook": "dl05",
+          "precision_at_10": 1.0,
+          "precision_at_10_ci95": [
+            1.0,
+            1.0
+          ],
+          "precision_at_10_ci_valid_draws": 2000,
+          "results_json_seed": 57,
+          "results_json_split_sizes": "{\"test\": 129, \"train\": 464, \"val\": 52}",
+          "results_json_test_metrics": "{\"AP\": 0.9972, \"AUC\": 0.9981, \"BalAcc\": 0.8766}",
+          "score_column": "prob_class_1",
+          "used_for_model_selection": false
+        }
+      ],
+      "status": "scored_descriptively"
+    }
+  },
+  "runtime_seconds": 9.3,
+  "status": "DESCRIPTIVE ONLY - single official test split, already-existing fast predictions",
+  "warnings": [],
+  "what_was_done": "Re-scored existing test_predictions.csv files; no retraining, no model/hyperparameter/threshold selection, no test-set tuning."
+}

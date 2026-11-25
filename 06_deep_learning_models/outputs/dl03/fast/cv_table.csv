@@ -1,0 +1,6 @@
+model,folds,cv_AUC_mean,cv_AUC_std
+ResidualMlp,2,0.9194,0.0051
+FPMlpShallow,2,0.9052,0.0087
+FPMlpDeep,2,0.9036,0.0141
+HybridGCNFp,2,0.9034,0.0156
+FingerPrintCNN,2,0.7896,0.0167

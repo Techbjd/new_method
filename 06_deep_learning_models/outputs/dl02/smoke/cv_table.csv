@@ -1,0 +1,4 @@
+model,folds,cv_AUC_mean,cv_AUC_std
+FPMlpDeep,2,0.9127,0.0873
+ResidualMlp,2,0.8958,0.0782
+FPMlpShallow,2,0.8658,0.056

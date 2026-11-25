@@ -1,0 +1,19 @@
+### dl02 run record
+- timestamp: 2026-11-22 23:00:18 | task=cls | profile=fast | seed=57
+- device: cpu (GPUs=0) | split 464/52/129
+- baseline (val AUC):
+    - FPMlpShallow   0.952 (1,051,138 params, 0.7s)
+    - FPMlpDeep      0.9505 (2,758,402 params, 1.7s)
+    - ResidualMlp    0.9535 (2,629,122 params, 1.7s)
+    - FingerPrintCNN 0.8771 (152,514 params, 8.6s)
+    - HybridGCNFp    0.9475 (339,202 params, 2.2s)
+- fine-tuned configs: {'FPMlpShallow': {'lr': 0.001, 'dropout': 0.1, 'hidden': None, 'wd': 0.0, 'batch': None}, 'FPMlpDeep': {'lr': 0.001, 'dropout': 0.1, 'hidden': None, 'wd': 0.0, 'batch': None}, 'ResidualMlp': {'lr': 0.001, 'dropout': 0.1, 'hidden': None, 'wd': 0.0, 'batch': None}, 'FingerPrintCNN': {'lr': 0.001, 'dropout': 0.3, 'hidden': None, 'wd': 0.0, 'batch': None}, 'HybridGCNFp': {'lr': 0.001, 'dropout': 0.3, 'hidden': None, 'wd': 0.0, 'batch': None}}
+- 5-fold CV (mean±std):
+    - FPMlpDeep      0.9127 ± 0.0033
+    - ResidualMlp    0.905 ± 0.0056
+    - HybridGCNFp    0.9047 ± 0.0177
+    - FPMlpShallow   0.8988 ± 0.02
+    - FingerPrintCNN 0.8353 ± 0.005
+- Y-randomization: [{'model': 'FPMlpDeep', 'mean': 0.6694, 'std': 0.07311484117468897}, {'model': 'ResidualMlp', 'mean': 0.5944499999999999, 'std': 0.003181980515339545}]
+- FINAL test (scored once, FPMlpDeep): {'AUC': 0.9933, 'AP': 0.9858, 'BalAcc': 0.9805} | 95% CI [0.9753, 1.0]
+- artifacts: ['baseline_table.csv', 'cv_table.csv', 'dl02_diary_block.txt', 'dl02_results.json', 'eda.png', 'finetune_table.csv', 'leaderboard.png', 'test_predictions.csv', 'test_roc.png', 'y_randomization_table.csv']

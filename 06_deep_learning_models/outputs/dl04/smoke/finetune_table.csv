@@ -1,0 +1,6 @@
+model,cfg_lr,cfg_dropout,cfg_hidden,cfg_wd,cfg_batch,ft_val_AUC,ft_val_AP,ft_val_BalAcc
+PNA,0.001,0.2,,0.0,,0.6721,0.695,0.5
+GraphTransformer,0.001,,,0.0,,0.7814,0.8421,0.5951
+GPS,0.001,,,0.0,,0.834,0.8846,0.666
+SmilesTransformer,0.001,,,0.0,,0.7773,0.7989,0.5
+FTTransformer,0.001,,,0.0,,0.8421,0.8599,0.5

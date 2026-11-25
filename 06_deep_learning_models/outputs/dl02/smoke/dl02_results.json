@@ -1,0 +1,143 @@
+{
+  "nb": "dl02",
+  "task": "cls",
+  "smoke": true,
+  "fast": false,
+  "profile": "smoke",
+  "seed": 57,
+  "timestamp": "2026-11-24 07:43:11",
+  "device": "cpu",
+  "n_gpus": 0,
+  "split_sizes": {
+    "train": 464,
+    "val": 52,
+    "test": 129
+  },
+  "models": [
+    "FPMlpDeep",
+    "FPMlpShallow",
+    "FingerPrintCNN",
+    "HybridGCNFp",
+    "ResidualMlp"
+  ],
+  "baseline": [
+    {
+      "model": "FPMlpShallow",
+      "val_AUC": 0.8704,
+      "val_AP": 0.8354,
+      "val_BalAcc": 0.7429,
+      "params": 1051138,
+      "epochs_run": 3,
+      "sec": 0.1
+    },
+    {
+      "model": "FPMlpDeep",
+      "val_AUC": 0.8421,
+      "val_AP": 0.8181,
+      "val_BalAcc": 0.666,
+      "params": 2758402,
+      "epochs_run": 3,
+      "sec": 0.2
+    },
+    {
+      "model": "ResidualMlp",
+      "val_AUC": 0.8138,
+      "val_AP": 0.824,
+      "val_BalAcc": 0.6154,
+      "params": 2629122,
+      "epochs_run": 3,
+      "sec": 0.2
+    },
+    {
+      "model": "FingerPrintCNN",
+      "val_AUC": 0.8502,
+      "val_AP": 0.8289,
+      "val_BalAcc": 0.5,
+      "params": 152514,
+      "epochs_run": 3,
+      "sec": 0.8
+    },
+    {
+      "model": "HybridGCNFp",
+      "val_AUC": 0.8219,
+      "val_AP": 0.8301,
+      "val_BalAcc": 0.5,
+      "params": 339202,
+      "epochs_run": 3,
+      "sec": 0.2
+    }
+  ],
+  "finetune_cfg": {
+    "FPMlpShallow": {
+      "lr": 0.001,
+      "dropout": null,
+      "hidden": null,
+      "wd": 0.0,
+      "batch": null
+    },
+    "FPMlpDeep": {
+      "lr": 0.001,
+      "dropout": 0.2,
+      "hidden": null,
+      "wd": 0.0,
+      "batch": null
+    },
+    "ResidualMlp": {
+      "lr": 0.001,
+      "dropout": null,
+      "hidden": null,
+      "wd": 0.0,
+      "batch": null
+    },
+    "FingerPrintCNN": {
+      "lr": 0.001,
+      "dropout": null,
+      "hidden": null,
+      "wd": 0.0,
+      "batch": null
+    },
+    "HybridGCNFp": {
+      "lr": 0.001,
+      "dropout": null,
+      "hidden": null,
+      "wd": 0.0,
+      "batch": null
+    }
+  },
+  "cv": [
+    {
+      "model": "FPMlpShallow",
+      "folds": 2,
+      "cv_AUC_mean": 0.8658,
+      "cv_AUC_std": 0.056
+    },
+    {
+      "model": "FPMlpDeep",
+      "folds": 2,
+      "cv_AUC_mean": 0.9127,
+      "cv_AUC_std": 0.0873
+    },
+    {
+      "model": "ResidualMlp",
+      "folds": 2,
+      "cv_AUC_mean": 0.8958,
+      "cv_AUC_std": 0.0782
+    }
+  ],
+  "yrand_mean": {
+    "FPMlpShallow": {
+      "mean": 0.5708,
+      "std": 0.292
+    }
+  },
+  "final_model": "FPMlpDeep",
+  "test_metrics": {
+    "AUC": 0.9704,
+    "AP": 0.9815,
+    "BalAcc": 0.6111
+  },
+  "test_ci": [
+    0.8906,
+    1.0
+  ]
+}

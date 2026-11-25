@@ -1,0 +1,4 @@
+model,folds,cv_AUC_mean,cv_AUC_std
+GPS,2,0.8122,0.1357
+GraphTransformer,2,0.5642,0.1858
+PNA,2,0.5148,0.0893

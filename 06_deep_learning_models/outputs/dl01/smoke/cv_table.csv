@@ -1,0 +1,4 @@
+model,folds,cv_AUC_mean,cv_AUC_std
+SmilesCNN,2,0.8775,0.0598
+GCN,2,0.6106,0.1498
+DescriptorMLP,2,0.5906,0.2063

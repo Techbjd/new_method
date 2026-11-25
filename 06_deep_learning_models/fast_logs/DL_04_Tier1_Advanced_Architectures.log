@@ -1,0 +1,122 @@
+[setup] environment ready — python 3.13.9 | torch 2.13.0+cpu | CPU | 8 cpu threads
+[seed] RANDOM_SEED=57 | profile=fast | TASK=cls | primary metric=AUC | outputs -> outputs/dl04/fast
+[S04] no CUDA — CPU mode (8 threads, python 3.13.9)
+[S05] loaded: ../00_data/training/ro5_properties_filtered.csv
+[S05] 645 compounds | Active 343 / Inactive 302 | pIC50 3.60-10.23
+[S05] source: ChEMBL MDM2-p53 bioactivity -> 2,571 raw records -> 1,933 unique compounds -> 645 after Lipinski-RO5 filtering (Arjun sir pipeline, Part_2)
+[S05] columns: molecule_chembl_id | canonical_smiles | bioactivity_class (Active/Inactive) | pIC50 = -log10(IC50 M) | MW / HBA / HBD / logP | ro5_fulfilled
+[S05] labels: 1 = Active, 0 = Inactive -> every classifier outputs softmax probabilities (prob_class_1 = P(Active), same schema as screening_results.csv)
+<Figure size 1500x400 with 3 Axes>
+[S06] unique Murcko scaffolds: 204 | INVALID: 0
+[S06] split: train 464 | val 52 | test 129 | Active tr/va/te = 262/29/52 | scaffold overlap train-test = 0 | test Murcko scaffolds=5 largest=[(np.str_('O=C1c2ccccc2C(c2ccccc2)N1Cc1ccccc1'), 40), (np.str_('c1ccc(C(Nc2ccccn2)c2ccc3cccnc3c2)cc1'), 34), (np.str_('O=C1c2nn(-c3cncnc3)cc2C(c2ccccc2)N1c1ccc[nH]c1=O'), 31)] | test scored ONCE (section 13)
+[S06][WARN] test set has very few Murcko scaffolds; high holdout AUC may reflect scaffold/series separation, not prospective molecule-level performance.
+[S06] graphs built: 645 (78-dim atoms, 6-dim bonds, both directions)
+[S06] valid SMILES: 645 / 645
+[S06] descriptors (645, 10) (standardised) | char codes (645, 96) | vocab 79 chars
+[S07] PNA degree histogram: max degree 52 | from 464 train graphs
+[S07] Tier-1 registry: PNA, GraphTransformer, GPS, SmilesTransformer, FTTransformer
+[S08] engine ready | epochs=8 patience=4 | batch graph=64 array=128 | AMP=False | clip=5.0
+      [PNA] ep   1 loss 0.6918 val AUC 0.7871
+      [PNA] ep   8 loss 0.4065 val AUC 0.9250
+[S09] PNA            val {'AUC': 0.925, 'AP': 0.9328, 'BalAcc': 0.8613} | 758,846 params | 8 ep | 22.2s
+      [GraphTransformer] ep   1 loss 0.7042 val AUC 0.7226
+      [GraphTransformer] ep   8 loss 0.3872 val AUC 0.8996
+[S09] GraphTransformer val {'AUC': 0.8996, 'AP': 0.8861, 'BalAcc': 0.8141} | 177,410 params | 8 ep | 4.9s
+      [GPS] ep   1 loss 0.5874 val AUC 0.8801
+      [GPS] ep   8 loss 0.3562 val AUC 0.9220
+[S09] GPS            val {'AUC': 0.9235, 'AP': 0.9276, 'BalAcc': 0.8486} | 342,019 params | 8 ep | 11.6s
+      [SmilesTransformer] ep   1 loss 0.6642 val AUC 0.7991
+      [SmilesTransformer] ep   8 loss 0.4202 val AUC 0.8936
+[S09] SmilesTransformer val {'AUC': 0.8936, 'AP': 0.8952, 'BalAcc': 0.8313} | 247,010 params | 8 ep | 24.4s
+      [FTTransformer] ep   1 loss 0.6775 val AUC 0.8261
+      [FTTransformer] ep   8 loss 0.5305 val AUC 0.8516
+[S09] FTTransformer  val {'AUC': 0.8516, 'AP': 0.8205, 'BalAcc': 0.8096} | 100,418 params | 8 ep | 1.5s
+               model  val_AUC  val_AP  val_BalAcc  params  epochs_run   sec
+0                PNA   0.9250  0.9328      0.8613  758846           8  22.2
+1                GPS   0.9235  0.9276      0.8486  342019           8  11.6
+2   GraphTransformer   0.8996  0.8861      0.8141  177410           8   4.9
+3  SmilesTransformer   0.8936  0.8952      0.8313  247010           8  24.4
+4      FTTransformer   0.8516  0.8205      0.8096  100418           8   1.5
+[S10] fine-tuning PNA (stage ladder)
+   stage A lr: {'lr': 0.0005} -> val AUC 0.9220
+   stage B dropout/wd: no improvement, keeping {'lr': 0.0005, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}
+   stage C capacity: no improvement, keeping {'lr': 0.0005, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}
+   stage D batch: no improvement, keeping {'lr': 0.0005, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}
+[S10] PNA tuned {'lr': 0.0005, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None} -> val {'AUC': 0.946, 'AP': 0.9545, 'BalAcc': 0.8486}
+[S10] fine-tuning GraphTransformer (stage ladder)
+   stage A lr: {'lr': 0.001} -> val AUC 0.8771
+   stage B dropout/wd: {'dropout': 0.1, 'wd': 0.0} -> val AUC 0.9040
+   stage C capacity: no improvement, keeping {'lr': 0.001, 'dropout': 0.1, 'hidden': None, 'wd': 0.0, 'batch': None}
+   stage D batch: no improvement, keeping {'lr': 0.001, 'dropout': 0.1, 'hidden': None, 'wd': 0.0, 'batch': None}
+[S10] GraphTransformer tuned {'lr': 0.001, 'dropout': 0.1, 'hidden': None, 'wd': 0.0, 'batch': None} -> val {'AUC': 0.916, 'AP': 0.8958, 'BalAcc': 0.8358}
+[S10] fine-tuning GPS (stage ladder)
+   stage A lr: {'lr': 0.0005} -> val AUC 0.9100
+   stage B dropout/wd: {'dropout': 0.1, 'wd': 0.0} -> val AUC 0.9115
+   stage C capacity: no improvement, keeping {'lr': 0.0005, 'dropout': 0.1, 'hidden': None, 'wd': 0.0, 'batch': None}
+   stage D batch: no improvement, keeping {'lr': 0.0005, 'dropout': 0.1, 'hidden': None, 'wd': 0.0, 'batch': None}
+[S10] GPS tuned {'lr': 0.0005, 'dropout': 0.1, 'hidden': None, 'wd': 0.0, 'batch': None} -> val {'AUC': 0.922, 'AP': 0.9159, 'BalAcc': 0.8658}
+[S10] fine-tuning SmilesTransformer (stage ladder)
+   stage A lr: {'lr': 0.001} -> val AUC 0.8816
+   stage B dropout/wd: no improvement, keeping {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}
+   stage C capacity: no improvement, keeping {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}
+   stage D batch: no improvement, keeping {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}
+[S10] SmilesTransformer tuned {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None} -> val {'AUC': 0.8936, 'AP': 0.8952, 'BalAcc': 0.8313}
+[S10] fine-tuning FTTransformer (stage ladder)
+   stage A lr: {'lr': 0.001} -> val AUC 0.8486
+   stage B dropout/wd: {'dropout': 0.1, 'wd': 0.0} -> val AUC 0.8501
+   stage C capacity: no improvement, keeping {'lr': 0.001, 'dropout': 0.1, 'hidden': None, 'wd': 0.0, 'batch': None}
+   stage D batch: no improvement, keeping {'lr': 0.001, 'dropout': 0.1, 'hidden': None, 'wd': 0.0, 'batch': None}
+[S10] FTTransformer tuned {'lr': 0.001, 'dropout': 0.1, 'hidden': None, 'wd': 0.0, 'batch': None} -> val {'AUC': 0.8501, 'AP': 0.8497, 'BalAcc': 0.7879}
+               model  cfg_lr  cfg_dropout cfg_hidden  cfg_wd cfg_batch  \
+0                PNA  0.0005          NaN       None     0.0      None   
+1   GraphTransformer  0.0010          0.1       None     0.0      None   
+2                GPS  0.0005          0.1       None     0.0      None   
+3  SmilesTransformer  0.0010          NaN       None     0.0      None   
+4      FTTransformer  0.0010          0.1       None     0.0      None   
+
+   ft_val_AUC  ft_val_AP  ft_val_BalAcc  
+0      0.9460     0.9545         0.8486  
+1      0.9160     0.8958         0.8358  
+2      0.9220     0.9159         0.8658  
+3      0.8936     0.8952         0.8313  
+4      0.8501     0.8497         0.7879  
+[S10b] stage1a.pt not found -> D-MPNN trains from scratch (hook is optional)
+[S11] fold val sizes: [258, 258]
+[S11] CV mean±std (validation folds only — test still untouched)
+               model  folds  cv_AUC_mean  cv_AUC_std
+0                PNA      2       0.8643      0.0104
+1                GPS      2       0.8609      0.0059
+2      FTTransformer      2       0.8342      0.0070
+3   GraphTransformer      2       0.8224      0.0426
+4  SmilesTransformer      2       0.7763      0.1198
+[S12] Y-randomization: 2 shuffles x 8 epochs per model (higher-than-chance real AUC = the labels carry real signal)
+  model     mean       std
+0   GPS  0.64095  0.058336
+1   PNA  0.70090  0.045538
+[S13] final model family: PNA | cfg {'lr': 0.0005, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}
+[S13] TEST (once): {'AUC': 0.9871, 'AP': 0.9752, 'BalAcc': 0.9353} | AUC 95% CI [0.9639, 1.0000] over 300/300 valid bootstrap resamples
+[S13] test_predictions.csv: prediction + softmax prob_class_1/prob_class_0 (same schema as screening_results.csv)
+[S13] saved outputs/dl04/fast/test_predictions.csv (129 rows)
+<Figure size 500x400 with 1 Axes>
+<Figure size 800x450 with 1 Axes>
+[S14] artifacts written: ['baseline_table.csv', 'cv_table.csv', 'dl04_diary_block.txt', 'dl04_results.json', 'eda.png', 'finetune_table.csv', 'leaderboard.png', 'test_predictions.csv', 'test_roc.png', 'y_randomization_table.csv']
+[S15] skipped (RUN_SCREENING=False, SMOKE=False, FAST=True; set DL_RUN_SCREENING=1 for the full 154k screen)
+### dl04 run record
+- timestamp: 2026-11-22 23:10:44 | task=cls | profile=fast | seed=57
+- device: cpu (GPUs=0) | split 464/52/129
+- baseline (val AUC):
+    - PNA            0.925 (758,846 params, 22.2s)
+    - GraphTransformer 0.8996 (177,410 params, 4.9s)
+    - GPS            0.9235 (342,019 params, 11.6s)
+    - SmilesTransformer 0.8936 (247,010 params, 24.4s)
+    - FTTransformer  0.8516 (100,418 params, 1.5s)
+- fine-tuned configs: {'PNA': {'lr': 0.0005, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}, 'GraphTransformer': {'lr': 0.001, 'dropout': 0.1, 'hidden': None, 'wd': 0.0, 'batch': None}, 'GPS': {'lr': 0.0005, 'dropout': 0.1, 'hidden': None, 'wd': 0.0, 'batch': None}, 'SmilesTransformer': {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}, 'FTTransformer': {'lr': 0.001, 'dropout': 0.1, 'hidden': None, 'wd': 0.0, 'batch': None}}
+- 5-fold CV (mean±std):
+    - PNA            0.8643 ± 0.0104
+    - GPS            0.8609 ± 0.0059
+    - FTTransformer  0.8342 ± 0.007
+    - GraphTransformer 0.8224 ± 0.0426
+    - SmilesTransformer 0.7763 ± 0.1198
+- Y-randomization: [{'model': 'GPS', 'mean': 0.64095, 'std': 0.058336309447890186}, {'model': 'PNA', 'mean': 0.7009, 'std': 0.045537676708413674}]
+- FINAL test (scored once, PNA): {'AUC': 0.9871, 'AP': 0.9752, 'BalAcc': 0.9353} | 95% CI [0.9639, 1.0]
+- artifacts: ['baseline_table.csv', 'cv_table.csv', 'dl04_diary_block.txt', 'dl04_results.json', 'eda.png', 'finetune_table.csv', 'leaderboard.png', 'test_predictions.csv', 'test_roc.png', 'y_randomization_table.csv']

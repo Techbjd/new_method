@@ -1,0 +1,5 @@
+model,shuffle,shuf_AUC,shuf_AP,shuf_BalAcc
+GatedGCN,1,0.5622,0.5597,0.6529
+GatedGCN,2,0.6972,0.7844,0.5847
+GIN,1,0.5892,0.5892,0.5
+GIN,2,0.6912,0.7368,0.5

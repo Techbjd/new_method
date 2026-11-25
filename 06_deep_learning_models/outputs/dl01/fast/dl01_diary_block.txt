@@ -1,0 +1,35 @@
+### dl01 run record
+- timestamp: 2026-11-22 22:58:07 | task=cls | profile=fast | seed=57
+- device: cpu (GPUs=0) | split 464/52/129
+- baseline (val AUC):
+    - DescriptorMLP  0.8951 (18,690 params, 0.2s)
+    - SmilesCNN      0.919 (217,154 params, 4.7s)
+    - GCN            0.9415 (60,482 params, 3.4s)
+    - GIN            0.9535 (77,061 params, 2.1s)
+    - GINE           0.9505 (79,399 params, 3.1s)
+    - GAT            0.946 (372,930 params, 11.4s)
+    - GATv2          0.943 (676,034 params, 18.5s)
+    - GraphSAGE      0.934 (103,234 params, 2.9s)
+    - GatedGCN       0.9385 (196,802 params, 8.3s)
+    - HybridGCNGAT   0.9325 (200,834 params, 9.4s)
+    - AttentiveFP    0.913 (490,882 params, 11.2s)
+    - D-MPNN         0.9085 (60,482 params, 6.5s)
+    - DeepChemGCN    0.9415 (136,130 params, 2.2s)
+- fine-tuned configs: {'DescriptorMLP': {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}, 'SmilesCNN': {'lr': 0.0005, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}, 'GCN': {'lr': 0.001, 'dropout': 0.1, 'hidden': None, 'wd': 0.0, 'batch': None}, 'GIN': {'lr': 0.0005, 'dropout': 0.1, 'hidden': None, 'wd': 0.0, 'batch': None}, 'GINE': {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}, 'GAT': {'lr': 0.001, 'dropout': 0.1, 'hidden': None, 'wd': 0.0, 'batch': None}, 'GATv2': {'lr': 0.0005, 'dropout': 0.1, 'hidden': None, 'wd': 0.0, 'batch': None}, 'GraphSAGE': {'lr': 0.001, 'dropout': 0.1, 'hidden': 64, 'wd': 0.0, 'batch': None}, 'GatedGCN': {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}, 'HybridGCNGAT': {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}, 'AttentiveFP': {'lr': 0.001, 'dropout': 0.1, 'hidden': 64, 'wd': 0.0, 'batch': None}, 'D-MPNN': {'lr': 0.001, 'dropout': 0.3, 'hidden': None, 'wd': 0.0, 'batch': None}, 'DeepChemGCN': {'lr': 0.0005, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}}
+- 5-fold CV (mean±std):
+    - GatedGCN       0.8762 ± 0.0102
+    - GIN            0.8677 ± 0.0007
+    - SmilesCNN      0.8673 ± 0.0085
+    - AttentiveFP    0.861 ± 0.0134
+    - GCN            0.8604 ± 0.0078
+    - DeepChemGCN    0.8595 ± 0.0022
+    - GINE           0.8584 ± 0.0193
+    - GAT            0.8549 ± 0.0058
+    - GraphSAGE      0.8545 ± 0.0012
+    - GATv2          0.8498 ± 0.0221
+    - HybridGCNGAT   0.8477 ± 0.0226
+    - DescriptorMLP  0.8346 ± 0.0019
+    - D-MPNN         0.7796 ± 0.0207
+- Y-randomization: [{'model': 'GIN', 'mean': 0.6402, 'std': 0.07212489168102791}, {'model': 'GatedGCN', 'mean': 0.6297, 'std': 0.09545941546018392}]
+- FINAL test (scored once, GatedGCN): {'AUC': 0.9989, 'AP': 0.9982, 'BalAcc': 0.961} | 95% CI [0.9955, 1.0]
+- artifacts: ['baseline_table.csv', 'cv_table.csv', 'dl01_diary_block.txt', 'dl01_results.json', 'eda.png', 'finetune_table.csv', 'leaderboard.png', 'test_predictions.csv', 'test_roc.png', 'y_randomization_table.csv']

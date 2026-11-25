@@ -1,0 +1,119 @@
+[setup] environment ready — python 3.13.9 | torch 2.13.0+cpu | CPU | 8 cpu threads
+[seed] RANDOM_SEED=57 | profile=smoke | TASK=cls | primary metric=AUC | outputs -> outputs/dl03/smoke
+[S04] no CUDA — CPU mode (8 threads, python 3.13.9)
+[S05] loaded: ../00_data/training/ro5_properties_filtered.csv
+[S05] 645 compounds | Active 343 / Inactive 302 | pIC50 3.60-10.23
+[S05] source: ChEMBL MDM2-p53 bioactivity -> 2,571 raw records -> 1,933 unique compounds -> 645 after Lipinski-RO5 filtering (Arjun sir pipeline, Part_2)
+[S05] columns: molecule_chembl_id | canonical_smiles | bioactivity_class (Active/Inactive) | pIC50 = -log10(IC50 M) | MW / HBA / HBD / logP | ro5_fulfilled
+[S05] labels: 1 = Active, 0 = Inactive -> every classifier outputs softmax probabilities (prob_class_1 = P(Active), same schema as screening_results.csv)
+<Figure size 1500x400 with 3 Axes>
+[S06] unique Murcko scaffolds: 204 | INVALID: 0
+[S06] split: train 464 | val 52 | test 129 | Active tr/va/te = 262/29/52 | scaffold overlap train-test = 0 | test Murcko scaffolds=5 largest=[(np.str_('O=C1c2ccccc2C(c2ccccc2)N1Cc1ccccc1'), 40), (np.str_('c1ccc(C(Nc2ccccn2)c2ccc3cccnc3c2)cc1'), 34), (np.str_('O=C1c2nn(-c3cncnc3)cc2C(c2ccccc2)N1c1ccc[nH]c1=O'), 31)] | test scored ONCE (section 13)
+[S06][WARN] test set has very few Murcko scaffolds; high holdout AUC may reflect scaffold/series separation, not prospective molecule-level performance.
+[S06] graphs built: 645 (78-dim atoms, 6-dim bonds, both directions)
+[S06] valid SMILES: 645 / 645
+[S06] MACCS keys (167 bits) matrix (645, 167) | mean bit-on rate 0.354 | active-vs-inactive mean bits 0.38 vs 0.32
+[S07] hybrid fp collate check ok: (2, 167)
+[S07] NB03 models: ['FPMlpDeep', 'FPMlpShallow', 'FingerPrintCNN', 'HybridGCNFp', 'ResidualMlp']
+[S07c] extended roster OFF: set DL_EXTRA_MODELS=1 to enable 34-model roster
+[S07c] 3-D models defined but NOT registered: no conformer coordinates (d.pos). Add 3-D coords to the featurizer, install e3nn, then set DL_USE_3D=1.
+[S08] engine ready | epochs=3 patience=2 | batch graph=64 array=128 | AMP=False | clip=5.0
+      [FPMlpShallow] ep   1 loss 0.7866 val AUC 0.8381
+      [FPMlpShallow] ep   3 loss 0.4360 val AUC 0.8988
+[S09] FPMlpShallow   val {'AUC': 0.8988, 'AP': 0.8734, 'BalAcc': 0.6154} | 88,066 params | 3 ep | 0.0s
+      [FPMlpDeep] ep   1 loss 0.7647 val AUC 0.8340
+      [FPMlpDeep] ep   3 loss 0.3779 val AUC 0.8583
+[S09] FPMlpDeep      val {'AUC': 0.8583, 'AP': 0.8859, 'BalAcc': 0.7692} | 832,258 params | 3 ep | 0.1s
+      [ResidualMlp] ep   1 loss 0.6368 val AUC 0.7854
+      [ResidualMlp] ep   3 loss 0.2064 val AUC 0.8421
+[S09] ResidualMlp    val {'AUC': 0.8421, 'AP': 0.8747, 'BalAcc': 0.5} | 1,666,050 params | 3 ep | 0.2s
+      [FingerPrintCNN] ep   1 loss 0.7008 val AUC 0.7571
+      [FingerPrintCNN] ep   3 loss 0.6308 val AUC 0.7895
+[S09] FingerPrintCNN val {'AUC': 0.7895, 'AP': 0.8429, 'BalAcc': 0.5} | 152,514 params | 3 ep | 0.1s
+      [HybridGCNFp] ep   1 loss 0.6307 val AUC 0.6842
+      [HybridGCNFp] ep   3 loss 0.5170 val AUC 0.8097
+[S09] HybridGCNFp    val {'AUC': 0.8097, 'AP': 0.8508, 'BalAcc': 0.5} | 98,434 params | 3 ep | 0.2s
+            model  val_AUC  val_AP  val_BalAcc   params  epochs_run  sec
+0    FPMlpShallow   0.8988  0.8734      0.6154    88066           3  0.0
+1       FPMlpDeep   0.8583  0.8859      0.7692   832258           3  0.1
+2     ResidualMlp   0.8421  0.8747      0.5000  1666050           3  0.2
+3     HybridGCNFp   0.8097  0.8508      0.5000    98434           3  0.2
+4  FingerPrintCNN   0.7895  0.8429      0.5000   152514           3  0.1
+[S10] fine-tuning FPMlpShallow (stage ladder)
+   stage A lr: {'lr': 0.001} -> val AUC 0.8988
+   stage B dropout/wd: no improvement, keeping {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}
+   stage C capacity: no improvement, keeping {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}
+   stage D batch: no improvement, keeping {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}
+[S10] FPMlpShallow tuned {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None} -> val {'AUC': 0.8988, 'AP': 0.8734, 'BalAcc': 0.6154}
+[S10] fine-tuning FPMlpDeep (stage ladder)
+   stage A lr: {'lr': 0.001} -> val AUC 0.8583
+   stage B dropout/wd: {'dropout': 0.2, 'wd': 0.0} -> val AUC 0.8623
+   stage C capacity: no improvement, keeping {'lr': 0.001, 'dropout': 0.2, 'hidden': None, 'wd': 0.0, 'batch': None}
+   stage D batch: no improvement, keeping {'lr': 0.001, 'dropout': 0.2, 'hidden': None, 'wd': 0.0, 'batch': None}
+[S10] FPMlpDeep tuned {'lr': 0.001, 'dropout': 0.2, 'hidden': None, 'wd': 0.0, 'batch': None} -> val {'AUC': 0.8623, 'AP': 0.8799, 'BalAcc': 0.7429}
+[S10] fine-tuning ResidualMlp (stage ladder)
+   stage A lr: {'lr': 0.001} -> val AUC 0.8421
+   stage B dropout/wd: no improvement, keeping {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}
+   stage C capacity: no improvement, keeping {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}
+   stage D batch: no improvement, keeping {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}
+[S10] ResidualMlp tuned {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None} -> val {'AUC': 0.8421, 'AP': 0.8747, 'BalAcc': 0.5}
+[S10] fine-tuning FingerPrintCNN (stage ladder)
+   stage A lr: {'lr': 0.001} -> val AUC 0.7895
+   stage B dropout/wd: no improvement, keeping {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}
+   stage C capacity: no improvement, keeping {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}
+   stage D batch: no improvement, keeping {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}
+[S10] FingerPrintCNN tuned {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None} -> val {'AUC': 0.7895, 'AP': 0.8429, 'BalAcc': 0.5}
+[S10] fine-tuning HybridGCNFp (stage ladder)
+   stage A lr: {'lr': 0.001} -> val AUC 0.8097
+   stage B dropout/wd: no improvement, keeping {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}
+   stage C capacity: no improvement, keeping {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}
+   stage D batch: no improvement, keeping {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}
+[S10] HybridGCNFp tuned {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None} -> val {'AUC': 0.8097, 'AP': 0.8508, 'BalAcc': 0.5}
+            model  cfg_lr  cfg_dropout cfg_hidden  cfg_wd cfg_batch  \
+0    FPMlpShallow   0.001          NaN       None     0.0      None   
+1       FPMlpDeep   0.001          0.2       None     0.0      None   
+2     ResidualMlp   0.001          NaN       None     0.0      None   
+3  FingerPrintCNN   0.001          NaN       None     0.0      None   
+4     HybridGCNFp   0.001          NaN       None     0.0      None   
+
+   ft_val_AUC  ft_val_AP  ft_val_BalAcc  
+0      0.8988     0.8734         0.6154  
+1      0.8623     0.8799         0.7429  
+2      0.8421     0.8747         0.5000  
+3      0.7895     0.8429         0.5000  
+4      0.8097     0.8508         0.5000  
+[S10b] stage1a.pt not found -> D-MPNN trains from scratch (hook is optional)
+[S11] fold val sizes: [258, 258]
+[S11] CV mean±std (validation folds only — test still untouched)
+          model  folds  cv_AUC_mean  cv_AUC_std
+0     FPMlpDeep      2       0.7874      0.1501
+1   ResidualMlp      2       0.7574      0.1123
+2  FPMlpShallow      2       0.7294      0.1352
+[S12] Y-randomization: 2 shuffles x 3 epochs per model (higher-than-chance real AUC = the labels carry real signal)
+          model    mean       std
+0  FPMlpShallow  0.6498  0.271953
+[S13] final model family: FPMlpDeep | cfg {'lr': 0.001, 'dropout': 0.2, 'hidden': None, 'wd': 0.0, 'batch': None}
+[S13] TEST (once): {'AUC': 0.7852, 'AP': 0.8452, 'BalAcc': 0.8333} | AUC 95% CI [0.5390, 1.0000] over 200/200 valid bootstrap resamples
+[S13] test_predictions.csv: prediction + softmax prob_class_1/prob_class_0 (same schema as screening_results.csv)
+[S13] saved outputs/dl03/smoke/test_predictions.csv (24 rows)
+<Figure size 500x400 with 1 Axes>
+<Figure size 800x450 with 1 Axes>
+[S14] artifacts written: ['baseline_table.csv', 'cv_table.csv', 'dl03_diary_block.txt', 'dl03_results.json', 'eda.png', 'finetune_table.csv', 'leaderboard.png', 'test_predictions.csv', 'test_roc.png', 'y_randomization_table.csv']
+[S15] skipped (RUN_SCREENING=False, SMOKE=True, FAST=False; set DL_RUN_SCREENING=1 for the full 154k screen)
+### dl03 run record
+- timestamp: 2026-11-24 07:43:25 | task=cls | profile=smoke | seed=57
+- device: cpu (GPUs=0) | split 464/52/129
+- baseline (val AUC):
+    - FPMlpShallow   0.8988 (88,066 params, 0.0s)
+    - FPMlpDeep      0.8583 (832,258 params, 0.1s)
+    - ResidualMlp    0.8421 (1,666,050 params, 0.2s)
+    - FingerPrintCNN 0.7895 (152,514 params, 0.1s)
+    - HybridGCNFp    0.8097 (98,434 params, 0.2s)
+- fine-tuned configs: {'FPMlpShallow': {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}, 'FPMlpDeep': {'lr': 0.001, 'dropout': 0.2, 'hidden': None, 'wd': 0.0, 'batch': None}, 'ResidualMlp': {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}, 'FingerPrintCNN': {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}, 'HybridGCNFp': {'lr': 0.001, 'dropout': None, 'hidden': None, 'wd': 0.0, 'batch': None}}
+- 5-fold CV (mean±std):
+    - FPMlpDeep      0.7874 ± 0.1501
+    - ResidualMlp    0.7574 ± 0.1123
+    - FPMlpShallow   0.7294 ± 0.1352
+- Y-randomization: [{'model': 'FPMlpShallow', 'mean': 0.6497999999999999, 'std': 0.2719532680443461}]
+- FINAL test (scored once, FPMlpDeep): {'AUC': 0.7852, 'AP': 0.8452, 'BalAcc': 0.8333} | 95% CI [0.539, 1.0]
+- artifacts: ['baseline_table.csv', 'cv_table.csv', 'dl03_diary_block.txt', 'dl03_results.json', 'eda.png', 'finetune_table.csv', 'leaderboard.png', 'test_predictions.csv', 'test_roc.png', 'y_randomization_table.csv']

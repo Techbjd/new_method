@@ -1,0 +1,159 @@
+{
+  "nb": "dl03",
+  "task": "cls",
+  "smoke": false,
+  "fast": true,
+  "profile": "fast",
+  "seed": 57,
+  "timestamp": "2026-11-22 23:01:12",
+  "device": "cpu",
+  "n_gpus": 0,
+  "split_sizes": {
+    "train": 464,
+    "val": 52,
+    "test": 129
+  },
+  "models": [
+    "FPMlpDeep",
+    "FPMlpShallow",
+    "FingerPrintCNN",
+    "HybridGCNFp",
+    "ResidualMlp"
+  ],
+  "baseline": [
+    {
+      "model": "FPMlpShallow",
+      "val_AUC": 0.937,
+      "val_AP": 0.9303,
+      "val_BalAcc": 0.8958,
+      "params": 88066,
+      "epochs_run": 7,
+      "sec": 0.3
+    },
+    {
+      "model": "FPMlpDeep",
+      "val_AUC": 0.97,
+      "val_AP": 0.9739,
+      "val_BalAcc": 0.9175,
+      "params": 832258,
+      "epochs_run": 8,
+      "sec": 0.7
+    },
+    {
+      "model": "ResidualMlp",
+      "val_AUC": 0.9715,
+      "val_AP": 0.9807,
+      "val_BalAcc": 0.8958,
+      "params": 1666050,
+      "epochs_run": 8,
+      "sec": 1.4
+    },
+    {
+      "model": "FingerPrintCNN",
+      "val_AUC": 0.8561,
+      "val_AP": 0.8602,
+      "val_BalAcc": 0.8186,
+      "params": 152514,
+      "epochs_run": 8,
+      "sec": 1.0
+    },
+    {
+      "model": "HybridGCNFp",
+      "val_AUC": 0.9505,
+      "val_AP": 0.9531,
+      "val_BalAcc": 0.8876,
+      "params": 98434,
+      "epochs_run": 8,
+      "sec": 1.9
+    }
+  ],
+  "finetune_cfg": {
+    "FPMlpShallow": {
+      "lr": 0.001,
+      "dropout": null,
+      "hidden": null,
+      "wd": 0.0,
+      "batch": null
+    },
+    "FPMlpDeep": {
+      "lr": 0.001,
+      "dropout": 0.1,
+      "hidden": null,
+      "wd": 0.0,
+      "batch": null
+    },
+    "ResidualMlp": {
+      "lr": 0.001,
+      "dropout": 0.3,
+      "hidden": null,
+      "wd": 0.0,
+      "batch": null
+    },
+    "FingerPrintCNN": {
+      "lr": 0.001,
+      "dropout": 0.3,
+      "hidden": null,
+      "wd": 0.0,
+      "batch": null
+    },
+    "HybridGCNFp": {
+      "lr": 0.001,
+      "dropout": null,
+      "hidden": null,
+      "wd": 0.0,
+      "batch": null
+    }
+  },
+  "cv": [
+    {
+      "model": "FPMlpShallow",
+      "folds": 2,
+      "cv_AUC_mean": 0.9052,
+      "cv_AUC_std": 0.0087
+    },
+    {
+      "model": "FPMlpDeep",
+      "folds": 2,
+      "cv_AUC_mean": 0.9036,
+      "cv_AUC_std": 0.0141
+    },
+    {
+      "model": "ResidualMlp",
+      "folds": 2,
+      "cv_AUC_mean": 0.9194,
+      "cv_AUC_std": 0.0051
+    },
+    {
+      "model": "FingerPrintCNN",
+      "folds": 2,
+      "cv_AUC_mean": 0.7896,
+      "cv_AUC_std": 0.0167
+    },
+    {
+      "model": "HybridGCNFp",
+      "folds": 2,
+      "cv_AUC_mean": 0.9034,
+      "cv_AUC_std": 0.0156
+    }
+  ],
+  "yrand_mean": {
+    "FPMlpShallow": {
+      "mean": 0.6709,
+      "std": 0.1219
+    },
+    "ResidualMlp": {
+      "mean": 0.6395,
+      "std": 0.035
+    }
+  },
+  "final_model": "ResidualMlp",
+  "test_metrics": {
+    "AUC": 0.9899,
+    "AP": 0.9786,
+    "BalAcc": 0.974
+  },
+  "test_ci": [
+    0.9701,
+    1.0
+  ]
+}
