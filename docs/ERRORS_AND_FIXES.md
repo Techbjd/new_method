@@ -84,3 +84,11 @@ practical history, not a claim that every run was reproduced locally.
 - Do not use pseudo-labelling or self-training on the screening library.
 - Do not add tiers or calibration layers as a substitute for external evidence.
 - An empty shortlist is a valid result; it means the strict filters did not find defensible candidates.
+
+## 10. Runtime: DataLoader fork inside threaded dual-GPU jobs
+
+| Problem | Why it happens | Fix used |
+|---|---|---|
+| Section 12 Y-randomization (or any `fit_model`) crashed with `RuntimeError: os.fork is unsafe while filelock is changing descriptor ownership` | `run_parallel()` splits jobs across `cuda:0`/`cuda:1` with `ThreadPoolExecutor`; `make_loader()` used `num_workers=2`, so iterating the DataLoader called `os.fork()` from a non-main thread. Python 3.13 + `filelock` 3.32.5 install an `os.fork` audit hook that rejects a fork while any thread is mid-fd-ownership change (HF/torch cache locks). Forking from a Jupyter thread is unsafe even without filelock | `num_workers()` in `06_deep_learning_models/build_notebooks.py` now defaults to **0** (in-process loading for the 645 in-memory graphs). Threads still give dual-GPU parallelism; no child processes are forked. `DL_DATALOADER_WORKERS=2` is an explicit opt-in for known single-threaded runs. Same change patched into all five generated notebooks |
+
+In a live kernel, the one-line unblock is to redefine the loader policy before rerunning the cell: `num_workers = lambda: 0`. This does not change any split, label-permutation, or metric logic.

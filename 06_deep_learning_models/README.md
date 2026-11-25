@@ -121,9 +121,16 @@ reasons; none of it changes the default 23-model registry.
 NB1 additionally offers two optional models: cell 9b runs the REAL deepchem
 `dc.models.GCNModel` (guarded — skipped unless deepchem + tensorflow import;
 the pure-torch DeepChemGCN replica in the roster always runs), and cell 10c
-fine-tunes a pretrained chemical LM — ChemBERTa by default, MoLFormer-XL with
-`DL_HF_MODEL=molformer` (`DL_USE_HF=1` to enable; pretrained weights stay
-sensitivity-only and are never selected against the test set).
+fine-tunes a pretrained chemical LM (`DL_USE_HF=1`, GPU required) with a
+frozen-head → last-2-layers → full-unfreeze ladder. Checkpoints were verified
+live on Hugging Face on 2026-11-25: `DL_HF_MODEL=chemberta` (default,
+`seyonec/ChemBERTa-zinc-base-v1`; the old `v0` is gone), `chemberta2`
+(`DeepChem/ChemBERTa-77M-MLM`), `chemberta3`
+(`DeepChem/ChemBERTa-100M-MLM`, the newest ChemBERTa-3) and `molformer`
+(`ibm-research/MoLFormer-XL-both-10pct`). All stay sensitivity-only and are
+never selected against the test set. SMI-TED is **not** wired into the cell —
+it needs IBM's custom loader; see `MODEL_RESEARCH.md` for its exact fine-tune
+recipe.
 
 **Probability outputs:** classification predictions are **softmax
 probabilities by default** — `prob_class_1 = P(Active)`, `prob_class_0 =
@@ -184,13 +191,14 @@ python3 run_fast.py               # all five; writes fast_logs/ + outputs/*/fast
 | `DL_TASK=reg` | `cls` | Regression on pIC50 instead of Active/Inactive classification |
 | `DL_RUN_SCREENING=0` | `1` (on) | **Skip** the 154,647-molecule COCONUT screen + applicability domain (screening still auto-skips in smoke/fast) |
 | `DL_INSTALL_DEEPCHEM=1` | `0` | Opt-in `pip install deepchem` for the real DeepChem GCN cell (needs TensorFlow; the pure-torch replica always runs) |
-| `DL_USE_HF=1` | `0` | Opt-in Hugging Face ChemBERTa/MoLFormer fine-tuning (GPU + model download) |
-| `DL_HF_MODEL=molformer` | `chemberta` | Choose the HF chemical LM |
+| `DL_USE_HF=1` | `0` | Opt-in Hugging Face pretrained-LM fine-tuning (GPU + model download; three-stage ladder) |
+| `DL_HF_MODEL=molformer` | `chemberta` | Choose the HF checkpoint: `chemberta`, `chemberta2`, `chemberta3`, `molformer` (all IDs verified 2026-11-25) |
 | `DL_PRETRAIN_SOURCE=zinc250k` | `zinc250k` | DL05 unlabeled chemistry corpus: `zinc250k` (default, open-source download/cached), `chembl_small`, `coconut` (explicit opt-in only), or a local path/URL |
 | `DL_PRETRAIN_MAX=30000` | profile default | Max unlabeled molecules for DL05 pretraining (smoke 1500, fast 4000, full 30000) |
 | `DL_PRETRAIN_CACHE=...` | `outputs/dl05/<profile>/pretrain_cache` | Cache directory for downloaded pretraining corpora |
 | `DL_CLEAR_OUTPUTS=1` | `0` | Clear notebook cell outputs after a successful `run_smoke.py`/`run_fast.py` run |
 | `DL_EXTRA_MODELS=1` | `0` | Enable the extended 34-model roster in the existing notebooks (default 23-model results unchanged) |
+| `DL_DATALOADER_WORKERS=2` | `0` | Opt **in** to DataLoader worker processes; off by default because forking from `run_parallel`'s threads fails on Python 3.13 + newer `filelock` (`os.fork is unsafe while filelock is changing descriptor ownership`) |
 | `DL_SSL_METHOD=graphcl\|joao\|gcc\|hu` | `molclr` | DL05 alternative label-free pretraining policy (only with `DL_EXTRA_MODELS=1`) |
 | `DL_UNCERTAINTY=1` | `0` | Validation-only uncertainty diagnostics: deep ensembles, MC-dropout, conformal, evidential proxy, multi-task (only with `DL_EXTRA_MODELS=1`) |
 | `DL_USE_3D=1` | `0` | Register 3-D models **only** when conformer coordinates (`d.pos`) exist and e3nn is installed; otherwise they are defined but skipped |

@@ -174,8 +174,14 @@ def free_mem():
 from torch.utils.data import DataLoader, TensorDataset, Subset
 
 def num_workers():
-    # Windows/Jupyter spawn cannot pickle PyG datasets reliably; keep it in-process.
-    return 0 if (SMOKE or N_GPUS == 0 or os.name == "nt") else 2
+    # DataLoader workers use fork() on Linux. run_parallel() runs training jobs in
+    # ThreadPoolExecutor threads (dual-GPU mode); Python 3.13 + filelock >= 3.3x
+    # reject os.fork() while a lock is held ("changing descriptor ownership"), and
+    # forking from a Jupyter thread is unsafe in general. PyG datasets also do not
+    # pickle reliably under Jupyter spawn. The 645 in-memory graphs load in-process
+    # at negligible cost, so keep workers OFF by default. Opt in only for a run you
+    # know is single-threaded: DL_DATALOADER_WORKERS=2.
+    return max(0, int(os.environ.get("DL_DATALOADER_WORKERS", "0")))
 
 def make_loader(ds, batch_size, shuffle, kind="graph"):
     if kind == "graph":
@@ -1545,17 +1551,20 @@ if PRETRAIN_SD is None:
 '''
 
 HF_FT_SRC = r'''
-# ## 10c. Stepwise Fine-Tuning of a Pretrained Chemical LM (ChemBERTa / MoLFormer) — optional
+# ## 10c. Stepwise Fine-Tuning of a Pretrained Chemical LM (ChemBERTa / ChemBERTa-3 / MoLFormer) — optional
 # Genuine stepwise FINE-TUNING: (1) frozen encoder + head-only, (2) unfreeze last 2 layers,
 # (3) full unfreeze at low lr. Validation-only selection. Disabled by default (needs GPU + download).
-# Pick the model with the DL_HF_MODEL env var: "chemberta" (default) or "molformer".
+# Pick the model with DL_HF_MODEL: chemberta (default), chemberta2, chemberta3, molformer.
+# HF IDs checked live 2026-11-25: seyonec ChemBERTa "v0" is gone (401) -> "v1".
 USE_HF_PRETRAINED = os.environ.get("DL_USE_HF", "0") == "1"
 if USE_HF_PRETRAINED and not SMOKE and DEVICE.type == "cuda":
     try:
         if not _have("transformers"):
             _pip("transformers")          # install BEFORE the import on fresh machines
         from transformers import AutoModel, AutoTokenizer
-        HF_CHOICES = {"chemberta": "seyonec/ChemBERTa-zinc-base-v0",
+        HF_CHOICES = {"chemberta": "seyonec/ChemBERTa-zinc-base-v1",
+                      "chemberta2": "DeepChem/ChemBERTa-77M-MLM",
+                      "chemberta3": "DeepChem/ChemBERTa-100M-MLM",
                       "molformer": "ibm-research/MoLFormer-XL-both-10pct"}
         HF_KEY = os.environ.get("DL_HF_MODEL", "chemberta")
         HF_NAME = HF_CHOICES.get(HF_KEY, HF_CHOICES["chemberta"])
@@ -1633,7 +1642,8 @@ if USE_HF_PRETRAINED and not SMOKE and DEVICE.type == "cuda":
         print("[S10c] [skipped]", type(e).__name__, e)
 else:
     print("[S10c] HF pretrained fine-tune disabled (set DL_USE_HF=1 on a GPU machine; "
-          "DL_HF_MODEL=chemberta|molformer). Pretrained weights stay sensitivity-only.")
+          "DL_HF_MODEL=chemberta|chemberta2|chemberta3|molformer). "
+          "Pretrained weights stay sensitivity-only.")
 '''
 
 DEEPCHEM_SRC = r'''

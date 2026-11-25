@@ -223,6 +223,74 @@ If the paper needs one of these, the only defensible near-term addition is
 MoLFormer). The 3-D/quantum and generative entries need new data or a new task
 and are listed as future work, never as results on this split.
 
+## Fine-tunable pretrained checkpoints — verified 2026-11-25 [USER]
+
+Direct answer to “which pretrained deep-learning models can I fine-tune here?”:
+**four** Hugging Face checkpoints are wired into `DL01` cell 10c; SMI-TED can be
+fine-tuned with IBM's own scripts but is **not** wired into the notebook; the
+3-D/quantum and generative entries are not fine-tuning tasks for this dataset.
+Every HF ID below was checked live against
+`https://huggingface.co/<id>/resolve/main/config.json` (HTTP 200) on
+2026-11-25. The previously used `seyonec/ChemBERTa-zinc-base-v0` now returns
+**401** and was replaced by `v1` in `build_notebooks.py` and `DL01`.
+
+| `DL_HF_MODEL` | Live HF checkpoint | Pretraining | Status here |
+|---|---|---|---|
+| `chemberta` (default) | `seyonec/ChemBERTa-zinc-base-v1` | RoBERTa MLM, ~10M ZINC SMILES | **Runnable** in DL01 S10c; working replacement for dead `v0` |
+| `chemberta2` | `DeepChem/ChemBERTa-77M-MLM` | ChemBERTa-2, 77M PubChem SMILES, MLM | **Runnable** in DL01 S10c. `DeepChem/ChemBERTa-77M-MTR` also exists but carries a 200-task regression head — do not swap heads blindly. |
+| `chemberta3` | `DeepChem/ChemBERTa-100M-MLM` | ChemBERTa-3 (RSC *Digital Discovery*, Jan 2026), 100M ZINC20 SMILES, ~92M params; https://github.com/deepforestsci/chemberta3 | **Runnable** in DL01 S10c — newest verified option; still sensitivity-only |
+| `molformer` | `ibm-research/MoLFormer-XL-both-10pct` | ~100M ZINC+PubChem SMILES, linear attention, ~47M params; HF card last updated 2026-07-23 | **Runnable** in DL01 S10c (`trust_remote_code=True`) |
+
+**How to run on a GPU notebook (Kaggle/Colab, Internet on).** Set these in the
+first cell *before* Run All, because cell 10c reads them at execution time:
+
+```python
+import os
+os.environ["DL_USE_HF"] = "1"
+os.environ["DL_HF_MODEL"] = "chemberta3"   # chemberta|chemberta2|chemberta3|molformer
+```
+
+Cell 10c then downloads the checkpoint, tries three stages in order
+(frozen encoder + new head → last two encoder layers at 2e-5 → full unfreeze
+at 1e-5), scores **validation only**, and writes
+`outputs/dl01/<profile>/hf_finetune_ladder.csv`. The test split is never used
+to pick a stage. `smoke`/`fast` profiles still skip this cell by design.
+
+**SMI-TED — fine-tunable, but outside this notebook for now.** Live HF repo
+`ibm-research/materials.smi-ted` (Apache-2.0; last modified 2025-07-02) ships
+`smi-ted-Light_40.pt`, safetensors, `finetune/finetune_classification.py`,
+`finetune/finetune_regression.py` and ready-made MoleculeNet shell scripts;
+both weights formats returned HTTP 200 on 2026-11-25. Its official recipe
+(https://github.com/IBM/materials/tree/main/models/smi_ted) needs Python 3.10,
+`pytorch-fast-transformers`, IBM's `load_smi_ted()` loader rather than plain
+`AutoModel`, and was tested on V100/A100. Example from the repo:
+
+```bash
+bash finetune/smi_ted_light/bace/run_finetune_bace.sh   # 40M light checkpoint
+```
+
+The 289M / 8×289M variants are described in the paper but the public HF repo
+ships the light checkpoint and custom training code, not a drop-in HF
+`AutoModel` checkpoint. Pretrained on 91M curated PubChem SMILES (4B tokens);
+that corpus is **not released**, so pretraining is not reproducible here.
+Fine-tune on our 464/52 scaffold split with the same validation-only ladder
+before considering it a sensitivity result; never equate a higher pIC50
+prediction with a validated hit.
+
+**2026 caveats worth recording.** (1) ChemBERTa-3 is the newest open checkpoint
+found (paper: https://pubs.rsc.org/dd/article/5/2/662/1228780/ChemBERTa-3-an-open-source-training-framework-for),
+but larger pretraining still does not guarantee better downstream QSAR: 2026
+studies across 64 datasets and a 2026 EMNLP probing paper report weak/unstable
+transfer, so pretrained LMs stay sensitivity analyses, not headline models
+(https://arxiv.org/abs/2610.18651, https://aclanthology.org/2026.emnlp-main.2662.pdf).
+(2) A 2026 *Journal of Cheminformatics* paper
+(https://link.springer.com/article/10.1186/s13321-026-01318-y) found the
+MoLFormer model card wrongly claims isomeric information was removed from
+pretraining, while its own vocabulary contains stereochemistry tokens; IBM's
+original fine-tuning pipeline, not the pretraining corpus, strips stereo.
+Our HF cell uses neither IBM's stripping nor a documented stereo policy, so
+report this as a provenance/reproducibility limitation if MoLFormer is used.
+
 ## How to validate added models
 
 ```bash
