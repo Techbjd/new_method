@@ -202,13 +202,15 @@ python3 run_fast.py               # all five; writes fast_logs/ + outputs/*/fast
   existing torch install is left untouched.
 - `rdkit-pypi` was replaced by the maintained `rdkit` package (Python 3.13
   wheels exist).
-- Data paths fall back through `00_data/`, `Part_2/`, `Part_8/` (screening),
-  `/content/...`, and then the public GitHub raw URLs: the 645-compound table
-  from `Techbjd/new_method`, the **COCONUT screening library directly from
-  Arjun sir's original repo**
-  (`raw.githubusercontent.com/arjunpahi/Natural_MDM2_Inhibitor_Discovery_using_ML/main/Part_8/screening_results.csv`),
-  so the notebooks also work on Colab/Kaggle without the repo.
-- Outputs land in `outputs/dl0X/<profile>/` next to the notebook.
+- **Kaggle/Colab: no local folder structure needed.** Notebooks try local copies
+  first and otherwise download everything from **Arjun sir's public repo**
+  (`raw.githubusercontent.com/arjunpahi/Natural_MDM2_Inhibitor_Discovery_using_ML/main`):
+  the 645-compound table from `Part_2/ro5_properties_filtered.csv` (verified:
+  645 rows, 343 Active) and the COCONUT screening library from
+  `Part_8/screening_results.csv`. Just enable **Internet** in the Kaggle
+  notebook settings and Run All.
+- Outputs land in `outputs/dl0X/<profile>/` next to the notebook (in
+  `/kaggle/working` on Kaggle).
 - Optional extras are **opt-in only**; a missing DeepChem/TensorFlow or
   Transformers install never stops the notebook.
 - The notebooks run on CPU (slow for full mode) or CUDA; no code changes are

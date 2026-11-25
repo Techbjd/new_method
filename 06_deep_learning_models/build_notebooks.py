@@ -218,12 +218,17 @@ gpu_report("[S04]")
 
 LOAD_SRC = r'''
 # ## 5. Load the MDM2 Dataset (645 compounds) + EDA
+# Kaggle/Colab-safe: NO local repo structure required. Local copies are tried
+# first (when running inside this repo); otherwise the canonical CSV is
+# downloaded from Arjun sir's public GitHub repo. On Kaggle enable Internet.
+GITHUB_ARJUN = ("https://raw.githubusercontent.com/arjunpahi/"
+                "Natural_MDM2_Inhibitor_Discovery_using_ML/main")
 DATA_CANDIDATES = [
     "../00_data/training/ro5_properties_filtered.csv",
     "00_data/training/ro5_properties_filtered.csv",
     "../Part_2/ro5_properties_filtered.csv",
     "/content/00_data/training/ro5_properties_filtered.csv",
-    "https://raw.githubusercontent.com/Techbjd/new_method/main/00_data/training/ro5_properties_filtered.csv",
+    f"{GITHUB_ARJUN}/Part_2/ro5_properties_filtered.csv",
 ]
 df = None
 for c in DATA_CANDIDATES:
@@ -233,7 +238,8 @@ for c in DATA_CANDIDATES:
         break
     except Exception:
         continue
-assert df is not None, "training CSV not found — check paths or internet access"
+assert df is not None, ("training CSV not found locally and the GitHub download failed — "
+                        "on Kaggle enable Internet in the notebook settings")
 assert len(df) == 645, f"expected 645 compounds, got {len(df)}"
 
 SMILES_COL, LABEL_COL, PIC50_COL = "canonical_smiles", "bioactivity_class", "pIC50"
